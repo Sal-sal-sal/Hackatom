@@ -1,22 +1,35 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Search } from "lucide-react"
 import { PriorityBadge } from "@/components/badges"
 import { DeadlineIndicator } from "@/components/progress-indicators"
-import { vacancies } from "@/lib/mock-data"
+import { fetchVacancies } from "@/lib/api/employ"
+import { mapVacancy } from "@/lib/api/mappers"
+import type { Vacancy } from "@/lib/mock-data"
 import { CandidatesDrawer } from "./candidates-drawer"
 
 export function VacanciesList() {
-  const [selectedVacancy, setSelectedVacancy] = useState<string | null>(null)
+  const [items, setItems] = useState<(Vacancy & { skills: string[] })[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [selected, setSelected] = useState<{ id: string; skills: string[]; role: string } | null>(null)
+
+  useEffect(() => {
+    fetchVacancies()
+      .then((data) => setItems(data.map(mapVacancy)))
+      .catch((e) => setError(e.message))
+  }, [])
+
+  if (error) return <p className="text-sm text-red-600">Failed to load vacancies: {error}</p>
+  if (!items) return <p className="text-sm text-muted-foreground">Loading vacancies…</p>
 
   return (
     <>
-      <div className="space-y-4">
-        {vacancies.map((vacancy) => (
+      <div data-testid="vacancies-list" className="space-y-4">
+        {items.map((vacancy) => (
           <Card key={vacancy.id} className="border bg-card">
             <CardContent className="p-4">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -27,7 +40,7 @@ export function VacanciesList() {
                     </h3>
                     <PriorityBadge priority={vacancy.priority} />
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-1.5">
                     {vacancy.skills.map((skill) => (
                       <Badge
@@ -48,7 +61,8 @@ export function VacanciesList() {
 
                 <Button
                   variant="outline"
-                  onClick={() => setSelectedVacancy(vacancy.id)}
+                  data-testid={`find-candidate-${vacancy.id}`}
+                  onClick={() => setSelected({ id: vacancy.id, skills: vacancy.skills, role: vacancy.role })}
                 >
                   <Search className="mr-1.5 h-4 w-4" />
                   Find candidate
@@ -60,9 +74,9 @@ export function VacanciesList() {
       </div>
 
       <CandidatesDrawer
-        open={selectedVacancy !== null}
-        onOpenChange={(open) => !open && setSelectedVacancy(null)}
-        vacancyId={selectedVacancy}
+        open={selected !== null}
+        onOpenChange={(open) => !open && setSelected(null)}
+        vacancy={selected}
       />
     </>
   )

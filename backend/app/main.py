@@ -8,6 +8,7 @@ from app.seed import DatabaseSeeder
 from app.employ.router import router as employ_router
 from app.supplies.router import router as supplies_router
 from app.deadlines.router import router as deadlines_router
+from app.dashboard.router import router as dashboard_router
 
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(employ_router)
 app.include_router(supplies_router)
 app.include_router(deadlines_router)
+app.include_router(dashboard_router)
 
 
 @app.get("/", tags=["meta"])

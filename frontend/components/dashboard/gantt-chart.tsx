@@ -1,7 +1,9 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ganttTasks } from "@/lib/mock-data"
+import { fetchGantt } from "@/lib/api/dashboard"
+import type { ApiGanttItem } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
 const categoryColors = {
@@ -12,15 +14,16 @@ const categoryColors = {
 }
 
 const categoryLabels = {
-  foundation: "Foundation",
-  electrical: "Electrical",
-  structural: "Structural",
-  safety: "Safety",
+  foundation: "Foundation", electrical: "Electrical",
+  structural: "Structural", safety: "Safety",
 }
 
 export function GanttChart() {
+  const [tasks, setTasks] = useState<ApiGanttItem[] | null>(null)
+  useEffect(() => { fetchGantt().then(setTasks).catch(() => setTasks([])) }, [])
+
   const days = Array.from({ length: 30 }, (_, i) => i + 1)
-  
+
   return (
     <Card className="border bg-card">
       <CardHeader className="pb-3">
@@ -37,62 +40,53 @@ export function GanttChart() {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        {!tasks ? <p className="p-4 text-sm text-muted-foreground">Loading…</p> : (
+        <div className="overflow-x-auto" data-testid="gantt-chart">
           <div className="min-w-[800px]">
-            {/* Header row with days */}
             <div className="flex border-t border-border">
               <div className="w-48 shrink-0 border-r border-border px-3 py-2">
                 <span className="text-xs font-medium text-muted-foreground">Task</span>
               </div>
               <div className="flex flex-1">
                 {days.map((day) => (
-                  <div
-                    key={day}
-                    className={cn(
-                      "flex-1 border-r border-border px-0.5 py-2 text-center",
-                      day % 7 === 0 && "bg-muted/30"
-                    )}
-                  >
+                  <div key={day} className={cn(
+                    "flex-1 border-r border-border px-0.5 py-2 text-center",
+                    day % 7 === 0 && "bg-muted/30",
+                  )}>
                     <span className="text-[10px] text-muted-foreground">{day}</span>
                   </div>
                 ))}
               </div>
             </div>
-            
-            {/* Task rows */}
-            {ganttTasks.map((task) => (
+            {tasks.map((task) => (
               <div key={task.id} className="flex border-t border-border">
                 <div className="w-48 shrink-0 border-r border-border px-3 py-2">
                   <span className="text-xs text-foreground">{task.name}</span>
                 </div>
                 <div className="relative flex flex-1">
                   {days.map((day) => (
-                    <div
-                      key={day}
-                      className={cn(
-                        "flex-1 border-r border-border",
-                        day % 7 === 0 && "bg-muted/30"
-                      )}
-                    />
+                    <div key={day} className={cn(
+                      "flex-1 border-r border-border",
+                      day % 7 === 0 && "bg-muted/30",
+                    )} />
                   ))}
-                  {/* Task bar */}
                   <div
                     className={cn("absolute top-1/2 -translate-y-1/2 h-5 rounded overflow-hidden", categoryColors[task.category].bg)}
                     style={{
-                      left: `${((task.startDay - 1) / 30) * 100}%`,
-                      width: `${(task.duration / 30) * 100}%`,
+                      left: `${(Math.min(task.start_day, 29) / 30) * 100}%`,
+                      width: `${(Math.min(task.duration, 30) / 30) * 100}%`,
                     }}
                   >
-                    <div
-                      className={cn("h-full rounded-l", categoryColors[task.category].bar)}
-                      style={{ width: `${task.progress}%` }}
-                    />
+                    <div className={cn("h-full rounded-l", categoryColors[task.category].bar)}
+                         style={{ width: `${task.progress}%` }} />
                   </div>
                 </div>
               </div>
             ))}
+            {tasks.length === 0 && <p className="p-4 text-sm text-muted-foreground">No scheduled tasks.</p>}
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   )
