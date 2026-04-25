@@ -14,6 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
+import { fetchSector, fetchSectorBrigades, fetchSectorDeadlines } from "@/lib/api/sectors"
+import type { ApiBrigade, ApiDeadline, ApiSector } from "@/lib/api/types"
 
 type NodeLink = {
   label: string
@@ -57,6 +59,7 @@ type ZoneRule = {
   title: string
   color: string
   description?: string
+  connectionZoneId?: string
   status: ZoneStatus
   progress?: number
   issues: string[]
@@ -70,6 +73,7 @@ type ZoneInfo = {
   title: string
   color: string
   description?: string
+  connectionZoneId?: string
   status: ZoneStatus
   progress?: number
   issues: string[]
@@ -81,6 +85,7 @@ type ComputedZone = {
   title: string
   color: string
   description?: string
+  connectionZoneId?: string
   status: ZoneStatus
   progress?: number
   issues: string[]
@@ -110,6 +115,27 @@ type DefaultViewState = {
   target: THREE.Vector3
   minDistance: number
   maxDistance: number
+}
+
+type SelectZoneOptions = {
+  focusCamera?: boolean
+}
+
+type ZoneFocusTransition = {
+  startMs: number
+  durationMs: number
+  fromPosition: THREE.Vector3
+  toPosition: THREE.Vector3
+  fromTarget: THREE.Vector3
+  toTarget: THREE.Vector3
+}
+
+type ZoneConnectionsState = {
+  zoneId: string
+  queryZoneId: string
+  sector: ApiSector | null
+  brigades: ApiBrigade[]
+  deadlines: ApiDeadline[]
 }
 
 const DEFAULT_MODEL_CANDIDATES: ModelCandidate[] = [
@@ -254,6 +280,14 @@ function parseZoneRules(raw: unknown) {
       typeof (entry as { description?: unknown }).description === "string"
         ? (entry as { description: string }).description
         : undefined
+    const connectionZoneIdRaw =
+      (entry as { connectionZoneId?: unknown }).connectionZoneId ??
+      (entry as { sectorZoneId?: unknown }).sectorZoneId ??
+      (entry as { apiZoneId?: unknown }).apiZoneId
+    const connectionZoneId =
+      typeof connectionZoneIdRaw === "string" && connectionZoneIdRaw.trim().length > 0
+        ? connectionZoneIdRaw.trim()
+        : undefined
 
     const status = parseZoneStatus((entry as { status?: unknown }).status)
     const progressRaw = (entry as { progress?: unknown }).progress
@@ -299,6 +333,7 @@ function parseZoneRules(raw: unknown) {
       title,
       color,
       description,
+      connectionZoneId,
       status,
       progress,
       issues,
@@ -568,7 +603,7 @@ function denormalizeBounds(modelBounds: THREE.Box3, normalized: NormalizedBounds
   return new THREE.Box3(min, max)
 }
 
-function createConfiguredZones(samples: MeshSample[], rules: ZoneRule[], modelBounds: THREE.Box3) {
+function createConfiguredZones(samples: MeshSample[], rules: ZoneRule[], modelBounds: THREE.Box3): ComputedZone[] {
   if (rules.length === 0) {
     return []
   }
@@ -612,6 +647,7 @@ function createConfiguredZones(samples: MeshSample[], rules: ZoneRule[], modelBo
       title: rule.title,
       color: rule.color,
       description: rule.description,
+      connectionZoneId: rule.connectionZoneId,
       status: rule.status,
       progress: rule.progress,
       issues: rule.issues,
@@ -642,7 +678,7 @@ function createConfiguredZones(samples: MeshSample[], rules: ZoneRule[], modelBo
   return zones
 }
 
-function createSpatialZones(samples: MeshSample[], bounds: THREE.Box3) {
+function createSpatialZones(samples: MeshSample[], bounds: THREE.Box3): ComputedZone[] {
   const size = bounds.getSize(new THREE.Vector3())
   const min = bounds.min
   const safeSizeX = Math.max(size.x, 1e-6)
@@ -731,6 +767,34 @@ function formatSize(value: number | undefined) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function formatDeadlineDate(raw: string) {
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) {
+    return raw
+  }
+  return new Intl.DateTimeFormat("ru-RU", { year: "numeric", month: "short", day: "numeric" }).format(date)
+}
+
+function getDeadlineStatusLabel(status: ApiDeadline["status"]) {
+  if (status === "todo") {
+    return "To do"
+  }
+  if (status === "in_progress") {
+    return "In progress"
+  }
+  return "Done"
+}
+
+function getDeadlineStatusVariant(status: ApiDeadline["status"]): "default" | "secondary" | "outline" {
+  if (status === "done") {
+    return "default"
+  }
+  if (status === "in_progress") {
+    return "secondary"
+  }
+  return "outline"
+}
+
 export interface NppModelViewerProps {
   onZoneSelect?: (zoneId: string | null) => void
   hideInspector?: boolean
@@ -750,6 +814,8 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const controlsRef = useRef<OrbitControls | null>(null)
   const defaultViewRef = useRef<DefaultViewState | null>(null)
+  const zoneFocusRef = useRef<ZoneFocusTransition | null>(null)
+  const zoneConnectionCacheRef = useRef<Map<string, ZoneConnectionsState>>(new Map())
 
   const [status, setStatus] = useState<ViewStatus>("loading")
   const [errorMessage, setErrorMessage] = useState("")
@@ -766,6 +832,9 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
   const [layerStats, setLayerStats] = useState<LayerStat[]>([])
   const [zoneVisibility, setZoneVisibility] = useState<Record<string, boolean>>({})
   const [zoneStats, setZoneStats] = useState<ZoneInfo[]>([])
+  const [zoneConnections, setZoneConnections] = useState<ZoneConnectionsState | null>(null)
+  const [isZoneConnectionsLoading, setIsZoneConnectionsLoading] = useState(false)
+  const [zoneConnectionsMessage, setZoneConnectionsMessage] = useState("")
   const [reloadKey, setReloadKey] = useState(0)
 
   const selectedModel = useMemo(
@@ -796,13 +865,63 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
     }
   }, [])
 
+  const focusCameraOnZone = useCallback((zoneId: string, instant = false) => {
+    const camera = cameraRef.current
+    const controls = controlsRef.current
+    const zone = zoneMetaRef.current.get(zoneId)
+    if (!camera || !controls || !zone) {
+      return
+    }
+
+    const zoneCenter = zone.box.getCenter(new THREE.Vector3())
+    const zoneSize = zone.box.getSize(new THREE.Vector3())
+    const maxAxis = Math.max(zoneSize.x, zoneSize.y, zoneSize.z, 1)
+    const currentDirection = camera.position.clone().sub(controls.target)
+    if (currentDirection.lengthSq() < 1e-6) {
+      currentDirection.set(1, 0.6, 1)
+    }
+    currentDirection.normalize()
+
+    const fovRadians = THREE.MathUtils.degToRad(camera.fov)
+    const fitDistance = (maxAxis * 1.3) / Math.tan(fovRadians / 2)
+    const targetDistance = Math.max(12, fitDistance)
+    const targetPosition = zoneCenter.clone().add(currentDirection.multiplyScalar(targetDistance))
+
+    controls.minDistance = Math.max(4, maxAxis * 0.35)
+    controls.maxDistance = Math.max(80, targetDistance * 8)
+
+    if (instant) {
+      camera.position.copy(targetPosition)
+      controls.target.copy(zoneCenter)
+      controls.update()
+      zoneFocusRef.current = null
+      return
+    }
+
+    zoneFocusRef.current = {
+      startMs: performance.now(),
+      durationMs: 650,
+      fromPosition: camera.position.clone(),
+      toPosition: targetPosition,
+      fromTarget: controls.target.clone(),
+      toTarget: zoneCenter,
+    }
+  }, [])
+
   const selectZoneById = useCallback(
-    (zoneId: string | null) => {
+    (zoneId: string | null, options: SelectZoneOptions = {}) => {
+      const zoneInfo = zoneId ? zoneInfoRef.current.get(zoneId) ?? null : null
       applyZoneSelection(zoneId)
-      setSelectedZone(zoneId ? zoneInfoRef.current.get(zoneId) ?? null : null)
-      onZoneSelect?.(zoneId)
+      setSelectedZone(zoneInfo)
+      const externalZoneId = zoneInfo?.connectionZoneId ?? zoneId
+      onZoneSelect?.(externalZoneId)
+      if (zoneId && options.focusCamera !== false) {
+        focusCameraOnZone(zoneId)
+      } else if (!zoneId) {
+        zoneFocusRef.current = null
+      }
     },
-    [applyZoneSelection, onZoneSelect]
+    [applyZoneSelection, focusCameraOnZone, onZoneSelect]
   )
 
   const applyZoneVisibility = useCallback(
@@ -1031,6 +1150,90 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
   }, [refreshCatalog])
 
   useEffect(() => {
+    const zoneId = selectedZone?.zoneId ?? null
+    const queryZoneId = selectedZone?.connectionZoneId ?? zoneId
+
+    if (!zoneId || !queryZoneId) {
+      setZoneConnections(null)
+      setZoneConnectionsMessage("")
+      setIsZoneConnectionsLoading(false)
+      return
+    }
+
+    const cached = zoneConnectionCacheRef.current.get(queryZoneId)
+    if (cached) {
+      setZoneConnections({ ...cached, zoneId, queryZoneId })
+      setZoneConnectionsMessage("")
+      setIsZoneConnectionsLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setIsZoneConnectionsLoading(true)
+    setZoneConnectionsMessage("")
+
+    ;(async () => {
+      const [sectorResult, brigadesResult, deadlinesResult] = await Promise.allSettled([
+        fetchSector(queryZoneId),
+        fetchSectorBrigades(queryZoneId),
+        fetchSectorDeadlines(queryZoneId),
+      ])
+
+      if (cancelled) {
+        return
+      }
+
+      const sector = sectorResult.status === "fulfilled" ? sectorResult.value : null
+      const brigades =
+        brigadesResult.status === "fulfilled"
+          ? [...brigadesResult.value].sort((a, b) => a.name.localeCompare(b.name))
+          : []
+      const deadlines =
+        deadlinesResult.status === "fulfilled"
+          ? [...deadlinesResult.value].sort((a, b) => a.deadline_date.localeCompare(b.deadline_date))
+          : []
+
+      const nextState: ZoneConnectionsState = {
+        zoneId,
+        queryZoneId,
+        sector,
+        brigades,
+        deadlines,
+      }
+
+      zoneConnectionCacheRef.current.set(queryZoneId, nextState)
+      setZoneConnections(nextState)
+
+      const failedCount =
+        Number(sectorResult.status === "rejected") +
+        Number(brigadesResult.status === "rejected") +
+        Number(deadlinesResult.status === "rejected")
+      if (failedCount === 3) {
+        setZoneConnectionsMessage(
+          "This section is not linked to any API sector. Add a sector with this zone_id or set connectionZoneId in zones.json."
+        )
+      } else if (failedCount > 0) {
+        setZoneConnectionsMessage("Some linked data is unavailable, but loaded brigades and plans are shown below.")
+      } else {
+        setZoneConnectionsMessage("")
+      }
+
+      setIsZoneConnectionsLoading(false)
+    })().catch(() => {
+      if (cancelled) {
+        return
+      }
+      setZoneConnections(null)
+      setZoneConnectionsMessage("Failed to load linked brigades and plans for the selected section.")
+      setIsZoneConnectionsLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedZone?.connectionZoneId, selectedZone?.zoneId])
+
+  useEffect(() => {
     const mount = mountRef.current
     if (!mount) {
       return
@@ -1048,6 +1251,9 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
     setErrorMessage("")
     setSelectedNode(null)
     setSelectedZone(null)
+    setZoneConnections(null)
+    setZoneConnectionsMessage("")
+    setIsZoneConnectionsLoading(false)
     setActiveModelPath("")
     setActiveModelFormat(null)
     setLayerVisibility({})
@@ -1064,6 +1270,8 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
     selectedZoneIdRef.current = null
     canMeshHighlightRef.current = false
     defaultViewRef.current = null
+    zoneFocusRef.current = null
+    zoneConnectionCacheRef.current = new Map()
 
     const scene = new THREE.Scene()
     scene.background = new THREE.Color("#0b1320")
@@ -1287,6 +1495,14 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
       renderer.setSize(mount.clientWidth, mount.clientHeight)
     }
 
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize()
+      })
+      resizeObserver.observe(mount)
+    }
+
     window.addEventListener("resize", handleResize)
     renderer.domElement.addEventListener("pointermove", handlePointerMove)
     renderer.domElement.addEventListener("pointerleave", handlePointerLeave)
@@ -1411,6 +1627,7 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
             title: zone.title,
             color: zone.color,
             description: zone.description,
+            connectionZoneId: zone.connectionZoneId,
             status: zone.status,
             progress: zone.progress,
             issues: zone.issues,
@@ -1496,6 +1713,30 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
       if (disposed) {
         return
       }
+
+      const zoneFocus = zoneFocusRef.current
+      if (zoneFocus) {
+        const elapsed = performance.now() - zoneFocus.startMs
+        const progress = THREE.MathUtils.clamp(elapsed / zoneFocus.durationMs, 0, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        camera.position.lerpVectors(zoneFocus.fromPosition, zoneFocus.toPosition, eased)
+        controls.target.lerpVectors(zoneFocus.fromTarget, zoneFocus.toTarget, eased)
+        if (progress >= 1) {
+          zoneFocusRef.current = null
+        }
+      }
+
+      const activeZoneId = selectedZoneIdRef.current
+      if (activeZoneId) {
+        const helper = zoneHelpersRef.current.get(activeZoneId)
+        const isZoneVisible = zoneVisibilityRef.current[activeZoneId] ?? true
+        if (helper && isZoneVisible) {
+          const material = helper.material as THREE.LineBasicMaterial
+          const pulse = 0.72 + Math.sin(performance.now() / 220) * 0.18
+          material.opacity = pulse
+        }
+      }
+
       controls.update()
       renderer.render(scene, camera)
     })
@@ -1505,6 +1746,7 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
 
       renderer.setAnimationLoop(null)
       window.removeEventListener("resize", handleResize)
+      resizeObserver?.disconnect()
       renderer.domElement.removeEventListener("pointermove", handlePointerMove)
       renderer.domElement.removeEventListener("pointerleave", handlePointerLeave)
       renderer.domElement.removeEventListener("click", handleClick)
@@ -1558,6 +1800,7 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
       selectedZoneIdRef.current = null
       canMeshHighlightRef.current = false
       defaultViewRef.current = null
+      zoneFocusRef.current = null
       cameraRef.current = null
       controlsRef.current = null
     }
@@ -1632,6 +1875,88 @@ export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModel
                     ))
                   ) : (
                     <p className="text-xs text-muted-foreground">No active problems reported.</p>
+                  )}
+                </div>
+                <div className="space-y-2 rounded-md border border-border/70 bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium text-foreground">Connected brigades and plans</p>
+                    {isZoneConnectionsLoading && (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Loading
+                      </span>
+                    )}
+                  </div>
+
+                  {zoneConnectionsMessage && <p className="text-xs text-amber-600">{zoneConnectionsMessage}</p>}
+
+                  {!isZoneConnectionsLoading && !zoneConnections && (
+                    <p className="text-xs text-muted-foreground">Select a section to load connections.</p>
+                  )}
+
+                  {!isZoneConnectionsLoading && zoneConnections && (
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <Badge variant="outline">API zone: {zoneConnections.queryZoneId}</Badge>
+                        {zoneConnections.sector?.title ? (
+                          <Badge variant="secondary">{zoneConnections.sector.title}</Badge>
+                        ) : (
+                          <Badge variant="outline">Sector not linked</Badge>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-foreground">
+                          Brigades ({zoneConnections.brigades.length})
+                        </p>
+                        {zoneConnections.brigades.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No brigades assigned to this section.</p>
+                        ) : (
+                          <div className="max-h-28 space-y-1 overflow-y-auto pr-1">
+                            {zoneConnections.brigades.map((brigade) => (
+                              <div
+                                key={brigade.id}
+                                className="rounded-sm border border-border/70 bg-background px-2 py-1 text-xs text-foreground"
+                              >
+                                <p className="truncate font-medium">{brigade.name}</p>
+                                <p className="truncate text-muted-foreground">
+                                  {brigade.specialization} - {brigade.members_count} members
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-foreground">
+                          Plans and tasks ({zoneConnections.deadlines.length})
+                        </p>
+                        {zoneConnections.deadlines.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No plans linked to this section.</p>
+                        ) : (
+                          <div className="max-h-36 space-y-1 overflow-y-auto pr-1">
+                            {zoneConnections.deadlines.map((deadline) => (
+                              <div
+                                key={deadline.id}
+                                className="rounded-sm border border-border/70 bg-background px-2 py-1 text-xs"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="truncate font-medium text-foreground">{deadline.title}</p>
+                                  <Badge variant={getDeadlineStatusVariant(deadline.status)}>
+                                    {getDeadlineStatusLabel(deadline.status)}
+                                  </Badge>
+                                </div>
+                                <div className="mt-1 flex items-center justify-between gap-2 text-muted-foreground">
+                                  <span>{formatDeadlineDate(deadline.deadline_date)}</span>
+                                  <span>{deadline.progress}%</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

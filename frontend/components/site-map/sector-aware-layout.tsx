@@ -25,7 +25,6 @@ export function SectorAwareLayout() {
   return (
     <div className={zoneId ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_440px]" : ""}>
       <NppModelViewer
-        key={zoneId ? "split" : "single"}
         onZoneSelect={setZoneId}
         hideInspector={zoneId !== null}
       />
