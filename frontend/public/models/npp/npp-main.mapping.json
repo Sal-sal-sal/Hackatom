@@ -1,0 +1,14 @@
+{
+  "ExampleNodeName": {
+    "nodeId": "ExampleNodeName",
+    "title": "Replace with real mesh name",
+    "category": "infrastructure",
+    "description": "Use FBX mesh names as keys to show domain metadata in inspector.",
+    "links": [
+      {
+        "label": "Open Supplies",
+        "href": "/supplies"
+      }
+    ]
+  }
+}
