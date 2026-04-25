@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.ai_matcher import similarity_score
 from app.core.enums import CandidateSource
 from . import models, schemas
+from .providers import ExternalCandidate, get_provider
 
 
 def list_brigades(db: Session) -> list[models.Brigade]:
@@ -48,35 +49,44 @@ def create_vacancy(db: Session, data: schemas.VacancyCreate) -> models.Vacancy:
     return obj
 
 
-def _mock_candidates(source: CandidateSource) -> list[dict]:
-    pool = [
-        {"full_name": "Сейткали Б.", "position": "Инженер-строитель", "experience_years": 8,
-         "skills": ["concrete", "rebar", "blueprints"],
-         "past_projects": ["Темиртау NPP feasibility", "Astana metro"], "source": source},
-        {"full_name": "Досмухамедов А.", "position": "Электромонтажник", "experience_years": 5,
-         "skills": ["electrical", "wiring", "safety"],
-         "past_projects": ["Almaty substation"], "source": source},
-        {"full_name": "Иванов С.", "position": "Сварщик 6 разряда", "experience_years": 12,
-         "skills": ["welding", "nuclear-grade", "inspection"],
-         "past_projects": ["Rosatom NPP Akkuyu", "Reactor vessel weld"], "source": source},
-        {"full_name": "Нурланов К.", "position": "Прораб", "experience_years": 15,
-         "skills": ["management", "scheduling", "safety", "construction"],
-         "past_projects": ["АЭС подготовка площадки", "Karaganda HPP"], "source": source},
-    ]
-    return pool
+def _from_local_employees(db: Session) -> list[ExternalCandidate]:
+    out = []
+    for e in db.query(models.Employee).all():
+        out.append(ExternalCandidate(
+            full_name=e.full_name,
+            position=e.position,
+            skills=list(e.skills or []),
+            past_projects=list(e.past_projects or []),
+            experience_years=e.experience_years or 0,
+            source_id=str(e.id),
+        ))
+    return out
 
 
-def search_candidates(db: Session, vacancy_id: int, source: CandidateSource) -> list[schemas.CandidateMatch]:
+async def search_candidates(db: Session, vacancy_id: int,
+                            source: CandidateSource) -> list[schemas.CandidateMatch]:
     vacancy = db.get(models.Vacancy, vacancy_id)
     if not vacancy:
         raise HTTPException(404, "Vacancy not found")
-    requirements = {"required_skills": vacancy.required_skills, "min_experience": 3}
-    results = []
-    for cand in _mock_candidates(source):
-        score = similarity_score(cand, requirements)
-        results.append(schemas.CandidateMatch(**cand, match_score=score))
-    results.sort(key=lambda c: c.match_score, reverse=True)
-    return results
+    requirements = {"required_skills": vacancy.required_skills or [], "min_experience": 3}
+
+    if source == CandidateSource.MANUAL:
+        raw = _from_local_employees(db)
+    else:
+        provider = get_provider(source)
+        if provider is None:
+            raise HTTPException(501, f"Provider for source={source} is not configured")
+        keywords = [vacancy.role, *(vacancy.required_skills or [])]
+        raw = await provider.search(keywords, limit=10)
+
+    matches = []
+    for c in raw:
+        score = similarity_score(c.model_dump(), requirements)
+        matches.append(schemas.CandidateMatch(
+            **c.model_dump(), source=source, match_score=score,
+        ))
+    matches.sort(key=lambda m: m.match_score, reverse=True)
+    return matches
 
 
 def shortlist_candidate(db: Session, vacancy_id: int, employee_id: int) -> models.Employee:

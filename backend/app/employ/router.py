@@ -45,9 +45,9 @@ def create_vacancy(data: schemas.VacancyCreate, db: Session = Depends(get_db)):
 
 @router.post("/vacancies/{vacancy_id}/search-candidates",
              response_model=list[schemas.CandidateMatch])
-def search_candidates(vacancy_id: int, body: schemas.CandidateSearch,
-                      db: Session = Depends(get_db)):
-    return service.search_candidates(db, vacancy_id, body.source)
+async def search_candidates(vacancy_id: int, body: schemas.CandidateSearch,
+                            db: Session = Depends(get_db)):
+    return await service.search_candidates(db, vacancy_id, body.source)
 
 
 @router.post("/vacancies/{vacancy_id}/shortlist/{employee_id}",
