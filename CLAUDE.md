@@ -22,3 +22,6 @@ National position
 •Environmental protection
 •Emergency planning
 •Industrial involvement
+
+
+ПРИ создании новых Endpoints  записавый  что они делают в Endpoints.md
