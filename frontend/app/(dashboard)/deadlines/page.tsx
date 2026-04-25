@@ -3,6 +3,8 @@
 import { AppHeader } from "@/components/app-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { KanbanBoard } from "@/components/deadlines/kanban-board"
+import { DeadlinesList } from "@/components/deadlines/deadlines-list"
+import { DeadlinesCalendar } from "@/components/deadlines/deadlines-calendar"
 import { LayoutGrid, List, CalendarDays } from "lucide-react"
 
 export default function DeadlinesPage() {
@@ -43,15 +45,11 @@ export default function DeadlinesPage() {
           </TabsContent>
 
           <TabsContent value="list" className="mt-4">
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 py-16">
-              <p className="text-muted-foreground">List view coming soon</p>
-            </div>
+            <DeadlinesList />
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-4">
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 py-16">
-              <p className="text-muted-foreground">Calendar view coming soon</p>
-            </div>
+            <DeadlinesCalendar />
           </TabsContent>
         </Tabs>
       </main>

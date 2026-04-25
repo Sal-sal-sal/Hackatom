@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.database import Base, SessionLocal, engine
 from app.seed import DatabaseSeeder
@@ -11,9 +12,24 @@ from app.deadlines.router import router as deadlines_router
 from app.dashboard.router import router as dashboard_router
 
 
+def _migrate(conn):
+    """Add new columns that may not exist in older DB files."""
+    migrations = [
+        "ALTER TABLE deadlines ADD COLUMN start_date DATE",
+    ]
+    for sql in migrations:
+        try:
+            conn.execute(text(sql))
+        except Exception:
+            pass  # column already exists
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    with engine.connect() as conn:
+        _migrate(conn)
+        conn.commit()
     db = SessionLocal()
     try:
         DatabaseSeeder(db).run()
@@ -26,8 +42,10 @@ app = FastAPI(title="NPP Management API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(employ_router)

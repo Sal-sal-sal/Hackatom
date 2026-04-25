@@ -49,6 +49,7 @@ export interface ApiCandidateMatch {
   location: string | null
   salary: string | null
   source_id: string | null
+  telegram: string | null
 }
 
 export interface ApiSupplier {
@@ -96,6 +97,7 @@ export interface ApiDeadline {
   priority: ApiPriority
   complexity: ApiComplexity
   status: ApiStatus
+  start_date: string | null
   deadline_date: string
   progress: number
   related_id: number | null
@@ -119,10 +121,16 @@ export interface ApiKpi {
 export interface ApiGanttItem {
   id: number
   name: string
-  start_day: number
-  duration: number
+  start_date: string
+  end_date: string
   progress: number
   category: "foundation" | "electrical" | "structural" | "safety"
+}
+
+export interface ApiGanttResponse {
+  chart_start: string
+  chart_end: string
+  items: ApiGanttItem[]
 }
 
 export interface ApiAlert {

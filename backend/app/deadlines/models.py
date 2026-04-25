@@ -16,6 +16,7 @@ class Deadline(Base):
     priority: Mapped[Priority] = mapped_column(String(20), default=Priority.MEDIUM)
     complexity: Mapped[Complexity] = mapped_column(String(20), default=Complexity.MEDIUM)
     status: Mapped[Status] = mapped_column(String(20), default=Status.TODO)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     deadline_date: Mapped[date] = mapped_column(Date)
     progress: Mapped[int] = mapped_column(Integer, default=0)
     related_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

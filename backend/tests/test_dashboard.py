@@ -12,12 +12,14 @@ def test_kpi_endpoint(client):
 def test_gantt_returns_items(client):
     r = client.get("/dashboard/gantt")
     assert r.status_code == 200
-    items = r.json()
+    body = r.json()
+    assert {"chart_start", "chart_end", "items"} <= set(body.keys())
+    items = body["items"]
     assert len(items) >= 1
     for it in items:
-        assert {"id", "name", "start_day", "duration", "progress", "category"} <= set(it.keys())
+        assert {"id", "name", "start_date", "end_date", "progress", "category"} <= set(it.keys())
         assert it["category"] in {"foundation", "electrical", "structural", "safety"}
-        assert it["duration"] >= 1
+        assert it["start_date"] <= it["end_date"]
 
 
 def test_alerts_severity(client):

@@ -11,5 +11,5 @@ export const listDeadlines = () => apiFetch<ApiDeadline[]>("/deadlines")
 
 export const createDeadline = (data: {
   title: string; description?: string; type: string; priority: string
-  complexity: string; deadline_date: string
+  complexity: string; start_date?: string; deadline_date: string
 }) => apiFetch<ApiDeadline>("/deadlines", { method: "POST", body: JSON.stringify(data) })

@@ -11,6 +11,7 @@ class DeadlineCreate(BaseModel):
     priority: Priority = Priority.MEDIUM
     complexity: Complexity = Complexity.MEDIUM
     status: Status = Status.TODO
+    start_date: date | None = None
     deadline_date: date
     progress: int = Field(0, ge=0, le=100)
     related_id: int | None = None
@@ -21,6 +22,7 @@ class DeadlineUpdate(BaseModel):
     description: str | None = None
     status: Status | None = None
     progress: int | None = Field(None, ge=0, le=100)
+    start_date: date | None = None
     deadline_date: date | None = None
     priority: Priority | None = None
 

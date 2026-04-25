@@ -13,6 +13,7 @@ class ExternalCandidate(BaseModel):
     location: str | None = None
     salary: str | None = None
     source_id: str | None = None
+    telegram: str | None = None
 
 
 class CandidateProvider(Protocol):

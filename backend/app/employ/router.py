@@ -38,6 +38,12 @@ def list_vacancies(db: Session = Depends(get_db)):
     return service.list_vacancies(db)
 
 
+@router.patch("/employees/{employee_id}", response_model=schemas.EmployeeOut)
+def update_employee_brigade(employee_id: int, data: schemas.EmployeeBrigadeUpdate,
+                            db: Session = Depends(get_db)):
+    return service.assign_employee_brigade(db, employee_id, data.brigade_id)
+
+
 @router.post("/vacancies", response_model=schemas.VacancyOut, status_code=201)
 def create_vacancy(data: schemas.VacancyCreate, db: Session = Depends(get_db)):
     return service.create_vacancy(db, data)

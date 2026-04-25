@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,7 +37,7 @@ export function AddVacancyDialog({ open, onOpenChange, onCreated }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add Vacancy</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Add Vacancy</DialogTitle><DialogDescription>Fill in the details to post a new vacancy.</DialogDescription></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <Label>Role</Label>

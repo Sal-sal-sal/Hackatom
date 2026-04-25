@@ -14,7 +14,7 @@ def kpi(db: Session = Depends(get_db)):
     return deadlines_service.dashboard(db)
 
 
-@router.get("/gantt", response_model=list[schemas.GanttItem])
+@router.get("/gantt", response_model=schemas.GanttResponse)
 def gantt(db: Session = Depends(get_db)):
     return service.gantt(db)
 

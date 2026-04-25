@@ -25,6 +25,26 @@ export const searchCandidates = (vacancyId: number, source: ApiCandidateSource) 
     body: JSON.stringify({ source }),
   })
 
+export async function searchAllCandidates(vacancyId: number): Promise<ApiCandidateMatch[]> {
+  const [manual, hh] = await Promise.all([
+    searchCandidates(vacancyId, "manual").catch(() => [] as ApiCandidateMatch[]),
+    searchCandidates(vacancyId, "hh").catch(() => [] as ApiCandidateMatch[]),
+  ])
+  const seen = new Set<string>()
+  return [...manual, ...hh].filter((c) => {
+    const key = c.full_name.toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  }).sort((a, b) => b.match_score - a.match_score)
+}
+
+export const assignEmployeeBrigade = (employeeId: number, brigadeId: number | null) =>
+  apiFetch<ApiEmployee>(`/employ/employees/${employeeId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ brigade_id: brigadeId }),
+  })
+
 export const shortlistCandidate = (vacancyId: number, employeeId: number) =>
   apiFetch<ApiEmployee>(`/employ/vacancies/${vacancyId}/shortlist/${employeeId}`, {
     method: "POST",

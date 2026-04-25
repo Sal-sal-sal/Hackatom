@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +18,7 @@ interface Props {
 const today = new Date().toISOString().slice(0, 10)
 const EMPTY = {
   title: "", type: "general", priority: "medium",
-  complexity: "medium", deadline_date: today, description: "",
+  complexity: "medium", start_date: today, deadline_date: today, description: "",
 }
 
 export function AddDeadlineDialog({ open, onOpenChange, onCreated, defaultStatus = "todo" }: Props) {
@@ -44,7 +44,7 @@ export function AddDeadlineDialog({ open, onOpenChange, onCreated, defaultStatus
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Add Task</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Add Task</DialogTitle><DialogDescription>Fill in the details to create a new task.</DialogDescription></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <Label>Title</Label>
@@ -89,9 +89,15 @@ export function AddDeadlineDialog({ open, onOpenChange, onCreated, defaultStatus
               </Select>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label>Deadline date</Label>
-            <Input type="date" required value={form.deadline_date} onChange={set("deadline_date")} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label>Start date</Label>
+              <Input type="date" required value={form.start_date} onChange={set("start_date")} />
+            </div>
+            <div className="space-y-1">
+              <Label>Deadline date</Label>
+              <Input type="date" required value={form.deadline_date} onChange={set("deadline_date")} />
+            </div>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2">

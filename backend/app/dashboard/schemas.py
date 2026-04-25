@@ -6,10 +6,16 @@ from pydantic import BaseModel
 class GanttItem(BaseModel):
     id: int
     name: str
-    start_day: int
-    duration: int
+    start_date: str   # ISO date
+    end_date: str     # ISO date
     progress: int
     category: Literal["foundation", "electrical", "structural", "safety"]
+
+
+class GanttResponse(BaseModel):
+    chart_start: str  # ISO date of the earliest start
+    chart_end: str    # ISO date of the latest end
+    items: list[GanttItem]
 
 
 class AlertItem(BaseModel):

@@ -54,6 +54,7 @@ export function mapCandidate(c: ApiCandidateMatch, requiredSkills: string[]): Ca
     matchScore: c.match_score,
     skillsMatched: matched,
     skillsTotal: total,
+    telegram: c.telegram ?? null,
     pastProjects: c.past_projects.map((name) => ({
       name,
       isNuclearRelevant: /nuclear|nрр|реактор|atom/i.test(name),

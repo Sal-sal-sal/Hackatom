@@ -7,7 +7,6 @@ from app.supplies.models import Supply
 from app.employ.models import Employee
 from . import schemas
 
-PROJECT_START = date(2026, 4, 1)
 _CATEGORY_BY_TYPE = {
     DeadlineType.SUPPLY: "structural",
     DeadlineType.HR: "electrical",
@@ -15,20 +14,45 @@ _CATEGORY_BY_TYPE = {
 }
 
 
-def gantt(db: Session) -> list[schemas.GanttItem]:
+def gantt(db: Session) -> schemas.GanttResponse:
     items = db.query(Deadline).order_by(Deadline.deadline_date.asc()).all()
-    out = []
+    if not items:
+        today = date.today()
+        return schemas.GanttResponse(
+            chart_start=today.isoformat(),
+            chart_end=today.isoformat(),
+            items=[],
+        )
+
+    today = date.today()
+    resolved = []
     for d in items:
-        start = (d.created_at.date() - PROJECT_START).days
-        duration = max((d.deadline_date - d.created_at.date()).days, 1)
+        s = d.start_date or d.created_at.date()
+        e = d.deadline_date
+        if e < s:
+            e = s + timedelta(days=1)
+        resolved.append((d, s, e))
+
+    chart_start = min(s for _, s, _ in resolved)
+    chart_end = max(e for _, _, e in resolved)
+
+    out = []
+    for d, s, e in resolved:
         category = _CATEGORY_BY_TYPE.get(d.type, "foundation")
-        if "safety" in d.title.lower() or "shield" in d.title.lower():
+        if "safety" in d.title.lower() or "shield" in d.title.lower() or "лицензи" in d.title.lower():
             category = "safety"
         out.append(schemas.GanttItem(
-            id=d.id, name=d.title, start_day=max(start, 0),
-            duration=duration, progress=d.progress, category=category,
+            id=d.id, name=d.title,
+            start_date=s.isoformat(),
+            end_date=e.isoformat(),
+            progress=d.progress,
+            category=category,
         ))
-    return out
+    return schemas.GanttResponse(
+        chart_start=chart_start.isoformat(),
+        chart_end=chart_end.isoformat(),
+        items=out,
+    )
 
 
 def alerts(db: Session) -> list[schemas.AlertItem]:

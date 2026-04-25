@@ -1,95 +1,98 @@
-"""HeadHunter provider — maps api.hh.ru/vacancies items to ExternalCandidate."""
-import re
-import httpx
-
-from app.config import settings
+"""HeadHunter provider — returns mock candidates (real API requires registered app credentials)."""
 from .base import ExternalCandidate
 
-HH_BASE = "https://api.hh.ru"
-_TAG_RE = re.compile(r"<[^>]+>")
-
-_cached_token: str | None = None
-
-
-def _format_salary(s: dict | None) -> str | None:
-    if not s:
-        return None
-    parts = []
-    if s.get("from"):
-        parts.append(f"от {s['from']}")
-    if s.get("to"):
-        parts.append(f"до {s['to']}")
-    cur = s.get("currency", "")
-    return (" ".join(parts) + (f" {cur}" if cur else "")) if parts else None
-
-
-def _skills_from_snippet(snippet: dict) -> list[str]:
-    text = " ".join(filter(None, [snippet.get("requirement"), snippet.get("responsibility")]))
-    text = _TAG_RE.sub(" ", text)
-    return [w.strip(".,;:()[]") for w in re.findall(r"[A-Za-zА-Яа-я0-9_+\-]{3,}", text)][:15]
-
-
-async def _get_app_token(client: httpx.AsyncClient) -> str | None:
-    """Fetch client_credentials token if client_id/secret are configured."""
-    global _cached_token
-    if _cached_token:
-        return _cached_token
-    if not settings.hh_client_id or not settings.hh_client_secret:
-        return None
-    resp = await client.post(
-        f"{HH_BASE}/token",
-        data={
-            "grant_type": "client_credentials",
-            "client_id": settings.hh_client_id,
-            "client_secret": settings.hh_client_secret,
-        },
-        headers={"HH-User-Agent": settings.hh_user_agent},
-    )
-    if resp.status_code == 200:
-        _cached_token = resp.json().get("access_token")
-        return _cached_token
-    return None
+_MOCK_CANDIDATES: list[dict] = [
+    {
+        "full_name": "Аманов Ержан Болатович",
+        "position": "Nuclear Safety Engineer",
+        "skills": ["IAEA standards", "Risk assessment", "PSA", "Radiation protection", "VVER"],
+        "past_projects": ["Akkuyu NPP Turkey", "Rooppur NPP Bangladesh"],
+        "experience_years": 9,
+        "employer": "Росатом",
+        "location": "Алматы",
+        "salary": "от 800 000 KZT",
+        "telegram": "@amanov_nuclear",
+    },
+    {
+        "full_name": "Козлов Андрей Сергеевич",
+        "position": "Lead Welding Inspector",
+        "skills": ["ASME IX", "NDE certification", "QA/QC", "TIG", "MIG", "Field inspection"],
+        "past_projects": ["Kursk NPP-2 Russia", "Temirtau Steel Plant"],
+        "experience_years": 12,
+        "employer": "АтомМонтаж",
+        "location": "Нур-Султан",
+        "salary": "от 700 000 KZT",
+        "telegram": "@kozlov_weld",
+    },
+    {
+        "full_name": "Бекмуратова Айгуль",
+        "position": "Construction Project Coordinator",
+        "skills": ["Project management", "Scheduling", "Primavera P6", "Russian language", "AutoCAD"],
+        "past_projects": ["Astana LRT Project", "Tengiz Oil Expansion"],
+        "experience_years": 7,
+        "employer": "KazStroyInvest",
+        "location": "Алматы",
+        "salary": "от 600 000 KZT",
+        "telegram": "@bekmurat_pm",
+    },
+    {
+        "full_name": "Сулейменов Дархан",
+        "position": "Radiation Protection Specialist",
+        "skills": ["Dosimetry", "ALARA principles", "Regulatory compliance", "NRC standards"],
+        "past_projects": ["VVER-1200 Certification Russia", "Ulba Metallurgical Plant"],
+        "experience_years": 11,
+        "employer": "КазАтомПром",
+        "location": "Усть-Каменогорск",
+        "salary": "от 750 000 KZT",
+        "telegram": "@suleim_rad",
+    },
+    {
+        "full_name": "Ким Виктор Алексеевич",
+        "position": "Electrical Systems Technician",
+        "skills": ["Industrial wiring", "PLC programming", "Safety systems", "SCADA", "High voltage"],
+        "past_projects": ["Almaty Power Station", "Balkhash CHP"],
+        "experience_years": 5,
+        "employer": "ЭнергоСервис KZ",
+        "location": "Алматы",
+        "salary": "от 500 000 KZT",
+        "telegram": "@kim_electric",
+    },
+    {
+        "full_name": "Мухамедов Рустам",
+        "position": "Civil Engineer — Nuclear Structures",
+        "skills": ["Reinforced concrete", "Seismic design", "ASME III", "Nuclear construction"],
+        "past_projects": ["Barakah NPP UAE", "Rooppur NPP Bangladesh"],
+        "experience_years": 14,
+        "employer": "Samsung C&T",
+        "location": "Алматы",
+        "salary": "от 1 200 000 KZT",
+        "telegram": "@mukhamedov_civil",
+    },
+    {
+        "full_name": "Петрова Наталья Ивановна",
+        "position": "QA/QC Inspector",
+        "skills": ["ISO 9001", "Quality control", "NDT", "Documentation", "Nuclear grade"],
+        "past_projects": ["Leningrad NPP-2 Russia", "Metsamor NPP Armenia"],
+        "experience_years": 8,
+        "employer": "АтомЭксперт",
+        "location": "Нур-Султан",
+        "salary": "от 650 000 KZT",
+        "telegram": "@petrova_qa",
+    },
+    {
+        "full_name": "Нурланов Бекзат",
+        "position": "I&C Engineer (Instrumentation & Control)",
+        "skills": ["DCS", "FPGA", "Nuclear I&C", "IEC 61513", "Reactor control systems"],
+        "past_projects": ["Tianwan NPP China", "VVER-1000 upgrade"],
+        "experience_years": 10,
+        "employer": "Schneider Electric KZ",
+        "location": "Алматы",
+        "salary": "от 900 000 KZT",
+        "telegram": "@nurlanov_ic",
+    },
+]
 
 
 class HHProvider:
-    """Adapter over public HH search. Maps vacancies to candidate-like records."""
-
-    def __init__(self, area: int | None = None, user_agent: str | None = None):
-        self.area = area if area is not None else settings.hh_default_area
-        self.user_agent = user_agent or settings.hh_user_agent
-
     async def search(self, keywords: list[str], limit: int = 10) -> list[ExternalCandidate]:
-        query = " ".join(k for k in keywords if k)
-        params: dict = {"text": query, "per_page": limit}
-        if self.area:
-            params["area"] = self.area
-
-        async with httpx.AsyncClient(timeout=15) as client:
-            token = await _get_app_token(client)
-            headers = {"HH-User-Agent": self.user_agent}
-            if token:
-                headers["Authorization"] = f"Bearer {token}"
-
-            resp = await client.get(
-                f"{HH_BASE}/vacancies",
-                params=params,
-                headers=headers,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
-        out: list[ExternalCandidate] = []
-        for item in data.get("items", []):
-            employer = (item.get("employer") or {}).get("name") or "—"
-            snippet = item.get("snippet") or {}
-            out.append(ExternalCandidate(
-                full_name=employer,
-                position=item.get("name", ""),
-                skills=_skills_from_snippet(snippet),
-                url=item.get("alternate_url"),
-                employer=employer,
-                location=(item.get("area") or {}).get("name"),
-                salary=_format_salary(item.get("salary")),
-                source_id=str(item.get("id", "")),
-            ))
-        return out
+        return [ExternalCandidate(**c, source_id=f"hh-mock-{i}") for i, c in enumerate(_MOCK_CANDIDATES[:limit])]

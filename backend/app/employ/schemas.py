@@ -52,6 +52,10 @@ class VacancyOut(VacancyCreate):
     created_at: datetime
 
 
+class EmployeeBrigadeUpdate(BaseModel):
+    brigade_id: int | None = None
+
+
 class CandidateSearch(BaseModel):
     source: CandidateSource
 
@@ -69,3 +73,4 @@ class CandidateMatch(BaseModel):
     location: str | None = None
     salary: str | None = None
     source_id: str | None = None
+    telegram: str | None = None

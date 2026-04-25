@@ -91,8 +91,18 @@ async def search_candidates(db: Session, vacancy_id: int,
         matches.append(schemas.CandidateMatch(
             **c.model_dump(), source=source, match_score=score,
         ))
+
     matches.sort(key=lambda m: m.match_score, reverse=True)
     return matches
+
+
+def assign_employee_brigade(db: Session, employee_id: int, brigade_id: int | None) -> models.Employee:
+    emp = db.get(models.Employee, employee_id)
+    if not emp:
+        raise HTTPException(404, "Employee not found")
+    emp.brigade_id = brigade_id
+    db.commit(); db.refresh(emp)
+    return emp
 
 
 def shortlist_candidate(db: Session, vacancy_id: int, employee_id: int) -> models.Employee:
