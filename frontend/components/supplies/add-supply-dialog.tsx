@@ -9,7 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { createSupply } from "@/lib/api/supplies"
 
-interface Props { open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void }
+interface Props {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onCreated: () => void
+  sectorId?: number
+}
 
 const today = new Date().toISOString().slice(0, 10)
 const EMPTY = {
@@ -18,7 +23,7 @@ const EMPTY = {
   nuclear_grade_required: false, note: "",
 }
 
-export function AddSupplyDialog({ open, onOpenChange, onCreated }: Props) {
+export function AddSupplyDialog({ open, onOpenChange, onCreated, sectorId }: Props) {
   const [form, setForm] = useState(EMPTY)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +45,7 @@ export function AddSupplyDialog({ open, onOpenChange, onCreated }: Props) {
         deadline: form.deadline,
         nuclear_grade_required: form.nuclear_grade_required,
         note: form.note,
+        sector_id: sectorId ?? null,
       })
       setForm(EMPTY); onOpenChange(false); onCreated()
     } catch (err: unknown) {

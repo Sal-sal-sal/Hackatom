@@ -28,6 +28,8 @@ export interface Brigade {
   currentTask: string
   progress: number
   deadline: string
+  sectorTitle?: string | null
+  sectorColor?: string | null
 }
 
 export interface Vacancy {

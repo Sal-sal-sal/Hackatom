@@ -8,8 +8,9 @@ router = APIRouter(prefix="/employ", tags=["employ"])
 
 
 @router.get("/brigades", response_model=list[schemas.BrigadeOut])
-def list_brigades(db: Session = Depends(get_db)):
-    return service.list_brigades(db)
+def list_brigades(available: bool | None = None, sector_id: int | None = None,
+                  db: Session = Depends(get_db)):
+    return service.list_brigades(db, available=available, sector_id=sector_id)
 
 
 @router.post("/brigades", response_model=schemas.BrigadeOut, status_code=201)
@@ -20,6 +21,12 @@ def create_brigade(data: schemas.BrigadeCreate, db: Session = Depends(get_db)):
 @router.get("/brigades/{brigade_id}", response_model=schemas.BrigadeDetail)
 def get_brigade(brigade_id: int, db: Session = Depends(get_db)):
     return service.get_brigade(db, brigade_id)
+
+
+@router.patch("/brigades/{brigade_id}", response_model=schemas.BrigadeOut)
+def update_brigade(brigade_id: int, data: schemas.BrigadeUpdate,
+                   db: Session = Depends(get_db)):
+    return service.update_brigade(db, brigade_id, data)
 
 
 @router.get("/employees", response_model=list[schemas.EmployeeOut])

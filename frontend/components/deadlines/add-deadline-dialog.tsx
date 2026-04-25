@@ -13,6 +13,7 @@ interface Props {
   onOpenChange: (v: boolean) => void
   onCreated: () => void
   defaultStatus?: string
+  sectorId?: number
 }
 
 const today = new Date().toISOString().slice(0, 10)
@@ -21,7 +22,7 @@ const EMPTY = {
   complexity: "medium", start_date: today, deadline_date: today, description: "",
 }
 
-export function AddDeadlineDialog({ open, onOpenChange, onCreated, defaultStatus = "todo" }: Props) {
+export function AddDeadlineDialog({ open, onOpenChange, onCreated, defaultStatus = "todo", sectorId }: Props) {
   const [form, setForm] = useState(EMPTY)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -34,7 +35,9 @@ export function AddDeadlineDialog({ open, onOpenChange, onCreated, defaultStatus
     e.preventDefault()
     setLoading(true); setError(null)
     try {
-      await createDeadline({ ...form, status: defaultStatus } as Parameters<typeof createDeadline>[0])
+      await createDeadline({
+        ...form, status: defaultStatus, sector_id: sectorId ?? null,
+      } as Parameters<typeof createDeadline>[0])
       setForm(EMPTY); onOpenChange(false); onCreated()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error")

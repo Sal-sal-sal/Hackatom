@@ -6,16 +6,22 @@ from sqlalchemy import text
 from app.database import Base, SessionLocal, engine
 from app.seed import DatabaseSeeder
 
+from app.sectors import models as sector_models  # noqa: F401 - register table
 from app.employ.router import router as employ_router
 from app.supplies.router import router as supplies_router
 from app.deadlines.router import router as deadlines_router
 from app.dashboard.router import router as dashboard_router
+from app.sectors.router import router as sectors_router
 
 
 def _migrate(conn):
     """Add new columns that may not exist in older DB files."""
     migrations = [
         "ALTER TABLE deadlines ADD COLUMN start_date DATE",
+        "ALTER TABLE brigades ADD COLUMN current_sector_id INTEGER",
+        "ALTER TABLE supplies ADD COLUMN sector_id INTEGER",
+        "ALTER TABLE deadlines ADD COLUMN sector_id INTEGER",
+        "ALTER TABLE deadlines ADD COLUMN brigade_id INTEGER",
     ]
     for sql in migrations:
         try:
@@ -52,6 +58,7 @@ app.include_router(employ_router)
 app.include_router(supplies_router)
 app.include_router(deadlines_router)
 app.include_router(dashboard_router)
+app.include_router(sectors_router)
 
 
 @app.get("/", tags=["meta"])

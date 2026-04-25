@@ -8,8 +8,16 @@ from . import models, schemas
 from .providers import ExternalCandidate, get_provider
 
 
-def list_brigades(db: Session) -> list[models.Brigade]:
-    return db.query(models.Brigade).all()
+def list_brigades(db: Session, available: bool | None = None,
+                  sector_id: int | None = None) -> list[models.Brigade]:
+    q = db.query(models.Brigade)
+    if available is True:
+        q = q.filter(models.Brigade.current_sector_id.is_(None))
+    elif available is False:
+        q = q.filter(models.Brigade.current_sector_id.is_not(None))
+    if sector_id is not None:
+        q = q.filter(models.Brigade.current_sector_id == sector_id)
+    return q.all()
 
 
 def create_brigade(db: Session, data: schemas.BrigadeCreate) -> models.Brigade:
@@ -22,6 +30,15 @@ def get_brigade(db: Session, brigade_id: int) -> models.Brigade:
     obj = db.get(models.Brigade, brigade_id)
     if not obj:
         raise HTTPException(404, "Brigade not found")
+    return obj
+
+
+def update_brigade(db: Session, brigade_id: int,
+                   data: schemas.BrigadeUpdate) -> models.Brigade:
+    obj = get_brigade(db, brigade_id)
+    for key, val in data.model_dump(exclude_unset=True).items():
+        setattr(obj, key, val)
+    db.commit(); db.refresh(obj)
     return obj
 
 

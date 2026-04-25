@@ -731,7 +731,12 @@ function formatSize(value: number | undefined) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function NppModelViewer() {
+export interface NppModelViewerProps {
+  onZoneSelect?: (zoneId: string | null) => void
+  hideInspector?: boolean
+}
+
+export function NppModelViewer({ onZoneSelect, hideInspector = false }: NppModelViewerProps = {}) {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const categoryMeshesRef = useRef<Map<string, THREE.Mesh[]>>(new Map())
   const zoneHelpersRef = useRef<Map<string, THREE.Box3Helper>>(new Map())
@@ -795,8 +800,9 @@ export function NppModelViewer() {
     (zoneId: string | null) => {
       applyZoneSelection(zoneId)
       setSelectedZone(zoneId ? zoneInfoRef.current.get(zoneId) ?? null : null)
+      onZoneSelect?.(zoneId)
     },
-    [applyZoneSelection]
+    [applyZoneSelection, onZoneSelect]
   )
 
   const applyZoneVisibility = useCallback(
@@ -1461,7 +1467,8 @@ export function NppModelViewer() {
 
         applyLayerVisibility(nextLayerVisibility)
         applyZoneVisibility(nextZoneVisibility)
-        selectZoneById(null)
+        applyZoneSelection(null)
+        setSelectedZone(null)
 
         setLayerStats(nextLayerStats)
         setLayerVisibility(nextLayerVisibility)
@@ -1564,7 +1571,7 @@ export function NppModelViewer() {
   ])
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className={hideInspector ? "space-y-4" : "grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]"}>
       <div className="space-y-4">
         <div className="relative h-[70vh] min-h-[460px] overflow-hidden rounded-xl border bg-background">
           <div ref={mountRef} className="h-full w-full" />
@@ -1633,6 +1640,7 @@ export function NppModelViewer() {
         </Card>
       </div>
 
+      {!hideInspector && (
       <Card className="border bg-card">
         <CardHeader>
           <CardTitle>Scene Inspector</CardTitle>
@@ -1834,6 +1842,7 @@ export function NppModelViewer() {
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   )
 }

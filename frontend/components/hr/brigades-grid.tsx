@@ -34,6 +34,27 @@ export function BrigadesGrid() {
                 <span>{brigade.memberCount}</span>
               </div>
             </div>
+            <div className="mt-2">
+              {brigade.sectorTitle ? (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium"
+                  style={{
+                    borderColor: brigade.sectorColor ?? undefined,
+                    color: brigade.sectorColor ?? undefined,
+                  }}
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: brigade.sectorColor ?? undefined }}
+                  />
+                  {brigade.sectorTitle}
+                </span>
+              ) : (
+                <span className="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  Свободна
+                </span>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">

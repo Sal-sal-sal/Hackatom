@@ -6,6 +6,7 @@ from app.core.enums import Priority, Complexity, Status, DeadlineType, Candidate
 from app.employ import models as em
 from app.supplies import models as sm
 from app.deadlines import models as dm
+from app.sectors.seed import seed_sectors, assign_initial_sectors
 
 
 class DatabaseSeeder:
@@ -16,8 +17,10 @@ class DatabaseSeeder:
         return self.db.query(em.Brigade).count() > 0
 
     def run(self) -> None:
+        zone_to_id = seed_sectors(self.db)
         if self.already_seeded():
             self._bulk_employees()
+            assign_initial_sectors(self.db, zone_to_id)
             self.db.commit()
             return
         self._brigades_and_employees()
@@ -25,6 +28,7 @@ class DatabaseSeeder:
         self._suppliers_and_supplies()
         self._deadlines()
         self._bulk_employees()
+        assign_initial_sectors(self.db, zone_to_id)
         self.db.commit()
 
     def _brigades_and_employees(self):

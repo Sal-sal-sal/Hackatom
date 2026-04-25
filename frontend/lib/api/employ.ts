@@ -3,12 +3,27 @@ import type {
   ApiBrigade, ApiVacancy, ApiCandidateMatch, ApiCandidateSource, ApiEmployee,
 } from "./types"
 
-export const fetchBrigades = () => apiFetch<ApiBrigade[]>("/employ/brigades")
+export const fetchBrigades = (filters: {
+  available?: boolean; sectorId?: number
+} = {}) => {
+  const params = new URLSearchParams()
+  if (filters.available !== undefined) params.set("available", String(filters.available))
+  if (filters.sectorId !== undefined) params.set("sector_id", String(filters.sectorId))
+  const qs = params.toString()
+  return apiFetch<ApiBrigade[]>(`/employ/brigades${qs ? `?${qs}` : ""}`)
+}
+
+export const updateBrigade = (brigadeId: number, data: { current_sector_id: number | null }) =>
+  apiFetch<ApiBrigade>(`/employ/brigades/${brigadeId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  })
 export const fetchVacancies = () => apiFetch<ApiVacancy[]>("/employ/vacancies")
 export const fetchEmployees = () => apiFetch<ApiEmployee[]>("/employ/employees")
 
 export const createBrigade = (data: {
   name: string; leader_name: string; members_count: number; specialization: string
+  current_sector_id?: number | null
 }) => apiFetch<ApiBrigade>("/employ/brigades", { method: "POST", body: JSON.stringify(data) })
 
 export const createVacancy = (data: {

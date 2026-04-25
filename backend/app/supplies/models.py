@@ -36,8 +36,12 @@ class Supply(Base):
     progress: Mapped[int] = mapped_column(Integer, default=0)
     nuclear_grade_required: Mapped[bool] = mapped_column(Boolean, default=False)
     note: Mapped[str] = mapped_column(Text, default="")
+    sector_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sectors.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow,
                                                  onupdate=datetime.utcnow)
 
     supplier: Mapped[Supplier | None] = relationship(back_populates="supplies")
+    sector = relationship("Sector", back_populates="supplies")

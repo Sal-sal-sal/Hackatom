@@ -21,10 +21,48 @@ All responses are JSON. Dates: `YYYY-MM-DD`. Datetimes: ISO‑8601.
 
 ---
 
+## Sectors (`/sectors`)
+
+### `GET /sectors?with_counts=true` → `SectorOut[]` or `SectorWithCounts[]`
+Список всех секторов площадки. С `with_counts=true` каждое поле дополняется
+`brigades_count`, `supplies_count`, `deadlines_count`. Источник данных —
+`frontend/public/models/npp/npp-main.zones.json` (seed на старте, idempotent).
+```json
+{
+  "id": 1,
+  "zone_id": "reactor-unit",
+  "title": "Реакторный блок",
+  "color": "#ef4444",
+  "status": "critical",
+  "progress": 54,
+  "description": "Монтаж корпуса реактора...",
+  "created_at": "2026-04-26T08:00:00"
+}
+```
+
+### `GET /sectors/{zone_id}` → `SectorOut`
+Поиск сектора по строковому `zone_id` (e.g. `reactor-unit`).
+
+### `GET /sectors/{zone_id}/brigades` → `BrigadeOut[]`
+Бригады, у которых `current_sector_id` указывает на этот сектор.
+
+### `GET /sectors/{zone_id}/supplies` → `SupplyOut[]`
+Поставки, привязанные к сектору через `sector_id`.
+
+### `GET /sectors/{zone_id}/deadlines` → `DeadlineOut[]`
+Задачи (deadlines), привязанные к сектору через `sector_id`.
+
+---
+
 ## Employ (`/employ`)
 
-### `GET /employ/brigades` → `BrigadeOut[]`
+### `GET /employ/brigades?available=&sector_id=` → `BrigadeOut[]`
+- `available=true` — только свободные (current_sector_id IS NULL)
+- `available=false` — только занятые
+- `sector_id=N` — фильтр по конкретному сектору
+
 ### `POST /employ/brigades` → `BrigadeOut` (201)
+Body: `BrigadeCreate` (поддерживает опциональное `current_sector_id: int | null`).
 ```json
 {
   "id": 1,
@@ -32,12 +70,21 @@ All responses are JSON. Dates: `YYYY-MM-DD`. Datetimes: ISO‑8601.
   "leader_name": "Ivan Petrov",
   "members_count": 12,
   "specialization": "concrete",
+  "current_sector_id": 1,
+  "current_sector": { "id": 1, "zone_id": "reactor-unit", "title": "Реакторный блок", "...": "..." },
   "created_at": "2026-04-25T10:00:00"
 }
 ```
 
 ### `GET /employ/brigades/{brigade_id}` → `BrigadeDetail`
 `BrigadeOut` + `employees: EmployeeOut[]`.
+
+### `PATCH /employ/brigades/{brigade_id}` → `BrigadeOut`
+Назначить или освободить бригаду от сектора.
+```json
+{ "current_sector_id": 1 }    // assign to sector
+{ "current_sector_id": null } // release (становится свободной)
+```
 
 ### `GET /employ/employees?brigade_id=&position=` → `EmployeeOut[]`
 ### `POST /employ/employees` → `EmployeeOut` (201)
@@ -95,7 +142,9 @@ Body: `{ "source": "hh" | "linkedin" | "manual" }`
 
 ## Supplies (`/supplies`)
 
-### `GET /supplies?status=&priority=&complexity=` → `SupplyOut[]`
+### `GET /supplies?status=&priority=&complexity=&sector_id=` → `SupplyOut[]`
+`SupplyOut` теперь содержит `sector_id: int | null`. POST body `SupplyCreate`
+тоже принимает `sector_id`.
 ### `POST /supplies` → `SupplyOut` (201)
 ### `GET /supplies/{supply_id}` → `SupplyOut`
 ### `PATCH /supplies/{supply_id}` → `SupplyOut`
@@ -148,7 +197,8 @@ Body: `{ status?, progress?, note? }`
 
 ## Deadlines (`/deadlines`)
 
-### `GET /deadlines?status=&priority=&type=&overdue=` → `DeadlineOut[]`
+### `GET /deadlines?status=&priority=&type=&overdue=&sector_id=&brigade_id=` → `DeadlineOut[]`
+`DeadlineOut` содержит `sector_id: int | null` и `brigade_id: int | null`. POST/PATCH принимают `sector_id` и `brigade_id` (последний — для назначения бригады на задачу).
 ### `POST /deadlines` → `DeadlineOut` (201)
 ### `PATCH /deadlines/{deadline_id}` → `DeadlineOut`
 ### `DELETE /deadlines/{deadline_id}` → 204 No Content

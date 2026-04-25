@@ -1,6 +1,6 @@
 from datetime import datetime, date
-from sqlalchemy import String, Integer, DateTime, Date, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Integer, DateTime, Date, Text, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 from app.core.enums import Priority, Complexity, Status, DeadlineType
@@ -20,4 +20,13 @@ class Deadline(Base):
     deadline_date: Mapped[date] = mapped_column(Date)
     progress: Mapped[int] = mapped_column(Integer, default=0)
     related_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sector_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sectors.id"), nullable=True
+    )
+    brigade_id: Mapped[int | None] = mapped_column(
+        ForeignKey("brigades.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    sector = relationship("Sector", back_populates="deadlines")
+    brigade = relationship("Brigade")

@@ -2,6 +2,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.core.enums import Priority, Complexity, Status, CandidateSource
+from app.sectors.schemas import SectorOut
 
 
 class BrigadeCreate(BaseModel):
@@ -9,12 +10,18 @@ class BrigadeCreate(BaseModel):
     leader_name: str
     members_count: int = 0
     specialization: str
+    current_sector_id: int | None = None
 
 
 class BrigadeOut(BrigadeCreate):
     model_config = ConfigDict(from_attributes=True)
     id: int
     created_at: datetime
+    current_sector: SectorOut | None = None
+
+
+class BrigadeUpdate(BaseModel):
+    current_sector_id: int | None = None
 
 
 class EmployeeCreate(BaseModel):

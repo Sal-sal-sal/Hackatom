@@ -1,5 +1,5 @@
 import { AppHeader } from "@/components/app-header"
-import { NppModelViewer } from "@/components/3d/npp-model-viewer"
+import { SectorAwareLayout } from "@/components/site-map/sector-aware-layout"
 
 export default function SiteMapPage() {
   return (
@@ -14,11 +14,11 @@ export default function SiteMapPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">Site map 3D</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Interactive 3D visualization of the construction site
+            Кликните на сектор, чтобы увидеть назначенные бригады, поставки и задачи
           </p>
         </div>
 
-        <NppModelViewer />
+        <SectorAwareLayout />
       </main>
     </>
   )

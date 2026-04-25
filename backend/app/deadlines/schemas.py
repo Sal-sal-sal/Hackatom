@@ -15,6 +15,8 @@ class DeadlineCreate(BaseModel):
     deadline_date: date
     progress: int = Field(0, ge=0, le=100)
     related_id: int | None = None
+    sector_id: int | None = None
+    brigade_id: int | None = None
 
 
 class DeadlineUpdate(BaseModel):
@@ -25,6 +27,8 @@ class DeadlineUpdate(BaseModel):
     start_date: date | None = None
     deadline_date: date | None = None
     priority: Priority | None = None
+    sector_id: int | None = None
+    brigade_id: int | None = None
 
 
 class DeadlineOut(DeadlineCreate):

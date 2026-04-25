@@ -11,13 +11,18 @@ import { createBrigade, fetchEmployees, assignEmployeeBrigade } from "@/lib/api/
 import type { ApiEmployee } from "@/lib/api/types"
 import { cn } from "@/lib/utils"
 
-interface Props { open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void }
+interface Props {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  onCreated: () => void
+  sectorId?: number
+}
 
 function initials(name: string) {
   return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("")
 }
 
-export function AddBrigadeDialog({ open, onOpenChange, onCreated }: Props) {
+export function AddBrigadeDialog({ open, onOpenChange, onCreated, sectorId }: Props) {
   const [name, setName] = useState("")
   const [specialization, setSpecialization] = useState("")
   const [employees, setEmployees] = useState<ApiEmployee[]>([])
@@ -54,6 +59,7 @@ export function AddBrigadeDialog({ open, onOpenChange, onCreated }: Props) {
         leader_name: leader.full_name,
         members_count: allMemberIds.length,
         specialization,
+        current_sector_id: sectorId ?? null,
       })
       await Promise.all(allMemberIds.map((id) => assignEmployeeBrigade(id, brigade.id)))
       reset(); onOpenChange(false); onCreated()

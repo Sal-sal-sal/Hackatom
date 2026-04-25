@@ -9,11 +9,17 @@ from . import models, schemas
 def list_deadlines(db: Session, status: Status | None = None,
                    priority: Priority | None = None,
                    type: DeadlineType | None = None,
-                   overdue: bool | None = None) -> list[models.Deadline]:
+                   overdue: bool | None = None,
+                   sector_id: int | None = None,
+                   brigade_id: int | None = None) -> list[models.Deadline]:
     q = db.query(models.Deadline)
     if status: q = q.filter(models.Deadline.status == status)
     if priority: q = q.filter(models.Deadline.priority == priority)
     if type: q = q.filter(models.Deadline.type == type)
+    if sector_id is not None:
+        q = q.filter(models.Deadline.sector_id == sector_id)
+    if brigade_id is not None:
+        q = q.filter(models.Deadline.brigade_id == brigade_id)
     if overdue is True:
         q = q.filter(models.Deadline.deadline_date < date.today(),
                      models.Deadline.status != Status.DONE)

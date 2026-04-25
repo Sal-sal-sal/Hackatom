@@ -11,6 +11,7 @@ import {
   BarChart3,
   Settings,
   Atom,
+  ClipboardList,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -31,6 +32,7 @@ const navItems = [
   { title: "Supplies", href: "/supplies", icon: Package },
   { title: "HR & Teams", href: "/hr", icon: Users },
   { title: "Deadlines", href: "/deadlines", icon: Calendar },
+  { title: "Assignments", href: "/assignments", icon: ClipboardList },
   { title: "Site map 3D", href: "/site-map", icon: Map },
   { title: "Analytics", href: "/analytics", icon: BarChart3 },
   { title: "Settings", href: "/settings", icon: Settings },

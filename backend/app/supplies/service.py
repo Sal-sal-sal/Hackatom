@@ -7,11 +7,13 @@ from . import models, schemas
 
 def list_supplies(db: Session, status: Status | None = None,
                   priority: Priority | None = None,
-                  complexity: Complexity | None = None):
+                  complexity: Complexity | None = None,
+                  sector_id: int | None = None):
     q = db.query(models.Supply)
     if status: q = q.filter(models.Supply.status == status)
     if priority: q = q.filter(models.Supply.priority == priority)
     if complexity: q = q.filter(models.Supply.complexity == complexity)
+    if sector_id is not None: q = q.filter(models.Supply.sector_id == sector_id)
     return q.all()
 
 

@@ -4,12 +4,31 @@ export type ApiStatus = "todo" | "in_progress" | "done"
 export type ApiDeadlineType = "supply" | "hr" | "general"
 export type ApiCandidateSource = "hh" | "linkedin" | "manual"
 
+export interface ApiSector {
+  id: number
+  zone_id: string
+  title: string
+  color: string
+  status: string
+  progress: number
+  description: string
+  created_at: string
+}
+
+export interface ApiSectorWithCounts extends ApiSector {
+  brigades_count: number
+  supplies_count: number
+  deadlines_count: number
+}
+
 export interface ApiBrigade {
   id: number
   name: string
   leader_name: string
   members_count: number
   specialization: string
+  current_sector_id: number | null
+  current_sector: ApiSector | null
   created_at: string
 }
 
@@ -76,6 +95,7 @@ export interface ApiSupply {
   progress: number
   nuclear_grade_required: boolean
   note: string
+  sector_id: number | null
   created_at: string
   updated_at: string
 }
@@ -101,6 +121,8 @@ export interface ApiDeadline {
   deadline_date: string
   progress: number
   related_id: number | null
+  sector_id: number | null
+  brigade_id: number | null
   created_at: string
 }
 

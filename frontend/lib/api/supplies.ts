@@ -23,4 +23,5 @@ export const assignSupplier = (supplyId: number, supplierId: number) =>
 export const createSupply = (data: {
   material_name: string; quantity: number; unit: string; priority: string
   complexity: string; deadline: string; nuclear_grade_required: boolean; note: string
+  sector_id?: number | null
 }) => apiFetch<ApiSupply>("/supplies", { method: "POST", body: JSON.stringify(data) })

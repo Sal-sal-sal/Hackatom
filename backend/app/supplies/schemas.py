@@ -31,12 +31,14 @@ class SupplyCreate(BaseModel):
     progress: int = Field(0, ge=0, le=100)
     nuclear_grade_required: bool = False
     note: str = ""
+    sector_id: int | None = None
 
 
 class SupplyUpdate(BaseModel):
     status: Status | None = None
     progress: int | None = Field(None, ge=0, le=100)
     note: str | None = None
+    sector_id: int | None = None
 
 
 class SupplyOut(SupplyCreate):

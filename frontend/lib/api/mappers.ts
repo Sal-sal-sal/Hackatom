@@ -28,6 +28,8 @@ export function mapBrigade(b: ApiBrigade): Brigade {
     currentTask: b.specialization,
     progress: 0,
     deadline: b.created_at.slice(0, 10),
+    sectorTitle: b.current_sector?.title ?? null,
+    sectorColor: b.current_sector?.color ?? null,
   }
 }
 

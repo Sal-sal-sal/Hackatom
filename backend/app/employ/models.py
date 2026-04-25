@@ -14,9 +14,13 @@ class Brigade(Base):
     leader_name: Mapped[str] = mapped_column(String(120))
     members_count: Mapped[int] = mapped_column(Integer, default=0)
     specialization: Mapped[str] = mapped_column(String(120))
+    current_sector_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sectors.id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     employees: Mapped[list["Employee"]] = relationship(back_populates="brigade")
+    current_sector = relationship("Sector", back_populates="brigades")
 
 
 class Employee(Base):

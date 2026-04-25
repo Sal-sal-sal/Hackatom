@@ -10,8 +10,9 @@ router = APIRouter(prefix="/supplies", tags=["supplies"])
 
 @router.get("", response_model=list[schemas.SupplyOut])
 def list_supplies(status: Status | None = None, priority: Priority | None = None,
-                  complexity: Complexity | None = None, db: Session = Depends(get_db)):
-    return service.list_supplies(db, status, priority, complexity)
+                  complexity: Complexity | None = None,
+                  sector_id: int | None = None, db: Session = Depends(get_db)):
+    return service.list_supplies(db, status, priority, complexity, sector_id)
 
 
 @router.post("", response_model=schemas.SupplyOut, status_code=201)
