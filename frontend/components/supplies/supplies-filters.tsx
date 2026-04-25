@@ -11,7 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-export function SuppliesFilters() {
+interface Props { onAddClick?: () => void }
+
+export function SuppliesFilters({ onAddClick }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Select defaultValue="all-status">
@@ -59,7 +61,7 @@ export function SuppliesFilters() {
         />
       </div>
 
-      <Button className="ml-auto">
+      <Button className="ml-auto" onClick={onAddClick}>
         <Plus className="mr-1.5 h-4 w-4" />
         Add supply
       </Button>

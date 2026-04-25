@@ -1,57 +1,31 @@
+"use client"
+
+import { useState } from "react"
 import { AppHeader } from "@/components/app-header"
 import { SuppliesFilters } from "@/components/supplies/supplies-filters"
 import { SuppliesTable } from "@/components/supplies/supplies-table"
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
+import { AddSupplyDialog } from "@/components/supplies/add-supply-dialog"
 
 export default function SuppliesPage() {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const reload = () => setRefreshKey((k) => k + 1)
+
   return (
     <>
-      <AppHeader
-        breadcrumbs={[
-          { label: "Dashboard", href: "/" },
-          { label: "Supplies" },
-        ]}
-      />
+      <AppHeader breadcrumbs={[{ label: "Dashboard", href: "/" }, { label: "Supplies" }]} />
       <main className="flex-1 overflow-auto p-6">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-foreground">Supplies</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage construction materials and supplier assignments
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Manage construction materials and supplier assignments</p>
         </div>
-
         <div className="space-y-4">
-          <SuppliesFilters />
-          <SuppliesTable />
-          
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious href="#" />
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#" isActive>1</PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#">2</PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationLink href="#">3</PaginationLink>
-              </PaginationItem>
-              <PaginationItem>
-                <PaginationNext href="#" />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+          <SuppliesFilters onAddClick={() => setDialogOpen(true)} />
+          <SuppliesTable key={refreshKey} />
         </div>
       </main>
+
+      <AddSupplyDialog open={dialogOpen} onOpenChange={setDialogOpen} onCreated={reload} />
     </>
   )
 }

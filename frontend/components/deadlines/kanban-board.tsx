@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { GripVertical, Package, Users, Plus } from "lucide-react"
@@ -8,9 +8,16 @@ import { PriorityBadge, ComplexityBadge } from "@/components/badges"
 import { TaskProgressBar, DeadlineIndicator } from "@/components/progress-indicators"
 import { fetchKanban } from "@/lib/api/deadlines"
 import { mapDeadlineToTask } from "@/lib/api/mappers"
+import { AddDeadlineDialog } from "./add-deadline-dialog"
 import type { Task, Status } from "@/lib/mock-data"
 import { getDaysUntilDeadline } from "@/lib/mock-data"
 import { cn } from "@/lib/utils"
+
+const STATUS_MAP: Record<Status, string> = {
+  "not-started": "todo",
+  "in-progress": "in_progress",
+  "completed": "done",
+}
 
 const columns: { id: Status; title: string; color: string }[] = [
   { id: "not-started", title: "To do", color: "bg-blue-500" },
@@ -62,8 +69,9 @@ function TaskCard({ task }: { task: Task }) {
 export function KanbanBoard() {
   const [data, setData] = useState<Record<Status, Task[]> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [addFor, setAddFor] = useState<Status | null>(null)
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetchKanban().then((kb) => setData({
       "not-started": kb.todo.map(mapDeadlineToTask),
       "in-progress": kb.in_progress.map(mapDeadlineToTask),
@@ -71,32 +79,46 @@ export function KanbanBoard() {
     })).catch((e) => setError(e.message))
   }, [])
 
+  useEffect(() => { load() }, [load])
+
   if (error) return <p className="text-sm text-red-600">Failed to load kanban: {error}</p>
   if (!data) return <p className="text-sm text-muted-foreground">Loading kanban…</p>
 
   return (
-    <div data-testid="kanban-board" className="grid gap-4 lg:grid-cols-3">
-      {columns.map((column) => {
-        const columnTasks = data[column.id]
-        return (
-          <div key={column.id} data-testid={`kanban-col-${column.id}`} className="flex flex-col">
-            <div className="mb-3 flex items-center gap-2">
-              <div className={cn("h-2 w-2 rounded-full", column.color)} />
-              <h3 className="text-sm font-medium text-foreground">{column.title}</h3>
-              <span className="text-sm text-muted-foreground">({columnTasks.length})</span>
-            </div>
-            <div className="flex-1 rounded-lg border border-dashed border-border bg-muted/20 p-2">
-              <div className="space-y-2">
-                {columnTasks.map((task) => <TaskCard key={task.id} task={task} />)}
+    <>
+      <div data-testid="kanban-board" className="grid gap-4 lg:grid-cols-3">
+        {columns.map((column) => {
+          const columnTasks = data[column.id]
+          return (
+            <div key={column.id} data-testid={`kanban-col-${column.id}`} className="flex flex-col">
+              <div className="mb-3 flex items-center gap-2">
+                <div className={cn("h-2 w-2 rounded-full", column.color)} />
+                <h3 className="text-sm font-medium text-foreground">{column.title}</h3>
+                <span className="text-sm text-muted-foreground">({columnTasks.length})</span>
               </div>
-              <Button variant="ghost"
-                      className="mt-2 w-full justify-start text-muted-foreground hover:text-foreground">
-                <Plus className="mr-1.5 h-4 w-4" />Add task
-              </Button>
+              <div className="flex-1 rounded-lg border border-dashed border-border bg-muted/20 p-2">
+                <div className="space-y-2">
+                  {columnTasks.map((task) => <TaskCard key={task.id} task={task} />)}
+                </div>
+                <Button
+                  variant="ghost"
+                  className="mt-2 w-full justify-start text-muted-foreground hover:text-foreground"
+                  onClick={() => setAddFor(column.id)}
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />Add task
+                </Button>
+              </div>
             </div>
-          </div>
-        )
-      })}
-    </div>
+          )
+        })}
+      </div>
+
+      <AddDeadlineDialog
+        open={addFor !== null}
+        onOpenChange={(v) => !v && setAddFor(null)}
+        onCreated={() => { setAddFor(null); load() }}
+        defaultStatus={addFor ? STATUS_MAP[addFor] : "todo"}
+      />
+    </>
   )
 }
