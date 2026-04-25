@@ -1,0 +1,69 @@
+[
+  {
+    "zoneId": "sector-1",
+    "title": "Sector 1",
+    "color": "#ef4444",
+    "status": "warning",
+    "progress": 58,
+    "description": "Buildings 01-04",
+    "issues": [
+      "Delayed concrete curing for building_03"
+    ],
+    "match": {
+      "regex": "^building_(0?[1-4])(\\.|_|$)"
+    }
+  },
+  {
+    "zoneId": "sector-2",
+    "title": "Sector 2",
+    "color": "#f97316",
+    "status": "ok",
+    "progress": 74,
+    "description": "Buildings 05-08",
+    "issues": [],
+    "match": {
+      "regex": "^building_(0?[5-8])(\\.|_|$)"
+    }
+  },
+  {
+    "zoneId": "sector-3",
+    "title": "Sector 3",
+    "color": "#eab308",
+    "status": "warning",
+    "progress": 63,
+    "description": "Buildings 09-12",
+    "issues": [
+      "Open electrical punch list in zone 11"
+    ],
+    "match": {
+      "regex": "^building_(0?9|1[0-2])(\\.|_|$)"
+    }
+  },
+  {
+    "zoneId": "sector-4",
+    "title": "Sector 4",
+    "color": "#22c55e",
+    "status": "ok",
+    "progress": 82,
+    "description": "Buildings 13-16",
+    "issues": [],
+    "match": {
+      "regex": "^building_(1[3-6])(\\.|_|$)"
+    }
+  },
+  {
+    "zoneId": "sector-5",
+    "title": "Sector 5",
+    "color": "#06b6d4",
+    "status": "critical",
+    "progress": 47,
+    "description": "Buildings 17-20",
+    "issues": [
+      "Scaffolding compliance audit failed for building_19",
+      "Pending crane availability for steel frame lift"
+    ],
+    "match": {
+      "regex": "^building_(1[7-9]|20)(\\.|_|$)"
+    }
+  }
+]

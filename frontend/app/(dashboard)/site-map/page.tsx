@@ -1,6 +1,5 @@
 import { AppHeader } from "@/components/app-header"
-import { Card, CardContent } from "@/components/ui/card"
-import { MapPin } from "lucide-react"
+import { NppModelViewer } from "@/components/3d/npp-model-viewer"
 
 export default function SiteMapPage() {
   return (
@@ -19,18 +18,7 @@ export default function SiteMapPage() {
           </p>
         </div>
 
-        <Card className="border bg-card">
-          <CardContent className="flex flex-col items-center justify-center py-24">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-              <MapPin className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">3D site visualization</h3>
-            <p className="mt-1 text-sm text-muted-foreground text-center max-w-md">
-              The interactive 3D model of Almaty NPP construction site will be displayed here,
-              showing real-time progress and resource allocation.
-            </p>
-          </CardContent>
-        </Card>
+        <NppModelViewer />
       </main>
     </>
   )
