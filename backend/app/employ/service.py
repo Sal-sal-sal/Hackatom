@@ -1,3 +1,4 @@
+import httpx
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -77,7 +78,12 @@ async def search_candidates(db: Session, vacancy_id: int,
         if provider is None:
             raise HTTPException(501, f"Provider for source={source} is not configured")
         keywords = [vacancy.role, *(vacancy.required_skills or [])]
-        raw = await provider.search(keywords, limit=10)
+        try:
+            raw = await provider.search(keywords, limit=10)
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(502, f"HH API unavailable: {exc}") from exc
+        except httpx.RequestError as exc:
+            raise HTTPException(502, f"HH API connection error: {exc}") from exc
 
     matches = []
     for c in raw:

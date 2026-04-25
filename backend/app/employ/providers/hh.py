@@ -41,13 +41,19 @@ class HHProvider:
     async def search(self, keywords: list[str], limit: int = 10) -> list[ExternalCandidate]:
         query = " ".join(k for k in keywords if k)
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(
-                f"{HH_BASE}/vacancies",
-                params={"text": query, "area": self.area, "per_page": limit},
-                headers={"User-Agent": self.user_agent},
-            )
-            resp.raise_for_status()
-            data = resp.json()
+            try:
+                resp = await client.get(
+                    f"{HH_BASE}/vacancies",
+                    params={"text": query, "area": self.area, "per_page": limit},
+                    headers={"User-Agent": self.user_agent},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            except httpx.HTTPStatusError as exc:
+                raise httpx.HTTPStatusError(
+                    f"HH API error {exc.response.status_code}: {exc.response.text[:120]}",
+                    request=exc.request, response=exc.response,
+                ) from exc
 
         out: list[ExternalCandidate] = []
         for item in data.get("items", []):
