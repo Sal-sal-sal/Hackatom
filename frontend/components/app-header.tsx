@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useTheme } from "next-themes"
 import { Bell, Moon, Sun, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,20 +31,23 @@ export function AppHeader({ breadcrumbs }: AppHeaderProps) {
         <Separator orientation="vertical" className="h-5" />
         <Breadcrumb>
           <BreadcrumbList>
-            {breadcrumbs.map((crumb, index) => (
-              <BreadcrumbItem key={crumb.label}>
-                {index < breadcrumbs.length - 1 ? (
-                  <>
-                    <BreadcrumbLink href={crumb.href || "#"}>
-                      {crumb.label}
-                    </BreadcrumbLink>
-                    <BreadcrumbSeparator />
-                  </>
-                ) : (
-                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                )}
-              </BreadcrumbItem>
-            ))}
+            {breadcrumbs.map((crumb, index) => {
+              const isLast = index === breadcrumbs.length - 1
+              return (
+                <React.Fragment key={crumb.label}>
+                  <BreadcrumbItem>
+                    {isLast ? (
+                      <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink href={crumb.href || "#"}>
+                        {crumb.label}
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                  {!isLast && <BreadcrumbSeparator />}
+                </React.Fragment>
+              )
+            })}
           </BreadcrumbList>
         </Breadcrumb>
       </div>
