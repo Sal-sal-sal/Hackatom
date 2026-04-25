@@ -735,6 +735,7 @@ export function NppModelViewer() {
   const mountRef = useRef<HTMLDivElement | null>(null)
   const categoryMeshesRef = useRef<Map<string, THREE.Mesh[]>>(new Map())
   const zoneHelpersRef = useRef<Map<string, THREE.Box3Helper>>(new Map())
+  const zoneHelperZoneRef = useRef<Map<string, string>>(new Map())
   const zoneMetaRef = useRef<Map<string, ComputedZone>>(new Map())
   const zoneInfoRef = useRef<Map<string, ZoneInfo>>(new Map())
   const meshZoneRef = useRef<Map<string, string>>(new Map())
@@ -1049,6 +1050,7 @@ export function NppModelViewer() {
     setZoneStats([])
     categoryMeshesRef.current = new Map()
     zoneHelpersRef.current = new Map()
+    zoneHelperZoneRef.current = new Map()
     zoneMetaRef.current = new Map()
     zoneInfoRef.current = new Map()
     meshZoneRef.current = new Map()
@@ -1085,6 +1087,7 @@ export function NppModelViewer() {
     scene.add(grid)
 
     const raycaster = new THREE.Raycaster()
+    raycaster.params.Line.threshold = 2
     const pointer = new THREE.Vector2()
     const materialStates = new WeakMap<THREE.Material, MaterialState>()
 
@@ -1138,6 +1141,43 @@ export function NppModelViewer() {
       return selected
     }
 
+    const pickZoneByHelper = () => {
+      if (zoneHelpersRef.current.size === 0) {
+        return null
+      }
+
+      const helperObjects: THREE.Object3D[] = []
+      for (const [zoneId, helper] of zoneHelpersRef.current.entries()) {
+        const visible = zoneVisibilityRef.current[zoneId] ?? true
+        if (!visible) {
+          continue
+        }
+        helperObjects.push(helper)
+      }
+
+      if (helperObjects.length === 0) {
+        return null
+      }
+
+      raycaster.setFromCamera(pointer, camera)
+      const intersections = raycaster.intersectObjects(helperObjects, true)
+      for (const hit of intersections) {
+        const direct = zoneHelperZoneRef.current.get(hit.object.uuid)
+        if (direct) {
+          return direct
+        }
+
+        if (hit.object.parent) {
+          const parentZone = zoneHelperZoneRef.current.get(hit.object.parent.uuid)
+          if (parentZone) {
+            return parentZone
+          }
+        }
+      }
+
+      return null
+    }
+
     const updatePointer = (event: MouseEvent | PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect()
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
@@ -1171,9 +1211,10 @@ export function NppModelViewer() {
 
     const handlePointerMove = (event: PointerEvent) => {
       updatePointer(event)
+      const zoneByHelper = pickZoneByHelper()
       const hit = pickHit()
       updateHover(hit?.mesh ?? null)
-      renderer.domElement.style.cursor = hit ? "pointer" : "default"
+      renderer.domElement.style.cursor = zoneByHelper || hit ? "pointer" : "default"
     }
 
     const handlePointerLeave = () => {
@@ -1183,7 +1224,26 @@ export function NppModelViewer() {
 
     const handleClick = (event: MouseEvent) => {
       updatePointer(event)
+      const zoneByHelper = pickZoneByHelper()
       const hit = pickHit()
+
+      if (zoneByHelper) {
+        clearMeshSelection()
+        selectZoneById(zoneByHelper)
+
+        if (hit) {
+          const nodeMeta = resolveNodeMeta(hit.mesh, mapping)
+          const zoneMeta = zoneInfoRef.current.get(zoneByHelper)
+          setSelectedNode({
+            ...nodeMeta,
+            zoneId: zoneByHelper,
+            zoneTitle: zoneMeta?.title,
+          })
+        } else {
+          setSelectedNode(null)
+        }
+        return
+      }
 
       if (!hit) {
         clearMeshSelection()
@@ -1333,6 +1393,7 @@ export function NppModelViewer() {
         const zones = configuredZones.length > 0 ? configuredZones : createSpatialZones(finalSamples, finalBounds)
 
         const zoneHelpers = new Map<string, THREE.Box3Helper>()
+        const zoneHelperZone = new Map<string, string>()
         const zoneMetaMap = new Map<string, ComputedZone>()
         const zoneInfoMap = new Map<string, ZoneInfo>()
         const meshZone = new Map<string, string>()
@@ -1362,10 +1423,12 @@ export function NppModelViewer() {
           material.opacity = 0.85
           scene.add(helper)
           zoneHelpers.set(zone.zoneId, helper)
+          zoneHelperZone.set(helper.uuid, zone.zoneId)
         }
 
         categoryMeshesRef.current = layerGroups
         zoneHelpersRef.current = zoneHelpers
+        zoneHelperZoneRef.current = zoneHelperZone
         zoneMetaRef.current = zoneMetaMap
         zoneInfoRef.current = zoneInfoMap
         meshZoneRef.current = meshZone
@@ -1480,6 +1543,7 @@ export function NppModelViewer() {
 
       categoryMeshesRef.current = new Map()
       zoneHelpersRef.current = new Map()
+      zoneHelperZoneRef.current = new Map()
       zoneMetaRef.current = new Map()
       zoneInfoRef.current = new Map()
       meshZoneRef.current = new Map()
@@ -1501,30 +1565,72 @@ export function NppModelViewer() {
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-      <div className="relative h-[70vh] min-h-[460px] overflow-hidden rounded-xl border bg-background">
-        <div ref={mountRef} className="h-full w-full" />
+      <div className="space-y-4">
+        <div className="relative h-[70vh] min-h-[460px] overflow-hidden rounded-xl border bg-background">
+          <div ref={mountRef} className="h-full w-full" />
 
-        {status === "loading" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading 3D scene...
+          {status === "loading" && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading 3D scene...
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {status === "error" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/90 p-4">
-            <div className="max-w-sm text-center">
-              <AlertTriangle className="mx-auto h-7 w-7 text-destructive" />
-              <p className="mt-3 text-sm text-foreground">{errorMessage}</p>
-              <Button className="mt-4" variant="outline" onClick={() => setReloadKey((value) => value + 1)}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Retry Scene Load
-              </Button>
+          {status === "error" && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/90 p-4">
+              <div className="max-w-sm text-center">
+                <AlertTriangle className="mx-auto h-7 w-7 text-destructive" />
+                <p className="mt-3 text-sm text-foreground">{errorMessage}</p>
+                <Button className="mt-4" variant="outline" onClick={() => setReloadKey((value) => value + 1)}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry Scene Load
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        <Card className="border bg-card">
+          <CardHeader>
+            <CardTitle>Zone State Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {!selectedZone ? (
+              <p className="text-foreground">Click zone overlay or model area to inspect zone status.</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium text-foreground">{selectedZone.title}</p>
+                  <Badge variant={getZoneStatusVariant(selectedZone.status)}>{getZoneStatusLabel(selectedZone.status)}</Badge>
+                </div>
+                {typeof selectedZone.progress === "number" && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Progress</span>
+                      <span>{selectedZone.progress}%</span>
+                    </div>
+                    <Progress value={selectedZone.progress} />
+                  </div>
+                )}
+                {selectedZone.description && <p className="text-sm text-muted-foreground">{selectedZone.description}</p>}
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-foreground">Problems</p>
+                  {selectedZone.issues.length > 0 ? (
+                    selectedZone.issues.map((issue) => (
+                      <p key={issue} className="text-xs text-muted-foreground">
+                        • {issue}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No active problems reported.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card className="border bg-card">
@@ -1691,42 +1797,6 @@ export function NppModelViewer() {
                     <Badge variant="outline">{layer.count}</Badge>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <p className="text-muted-foreground">Selected zone</p>
-            {!selectedZone ? (
-              <p className="text-foreground">Click zone overlay or model area to inspect zone status.</p>
-            ) : (
-              <div className="space-y-2 rounded-md border p-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium text-foreground">{selectedZone.title}</p>
-                  <Badge variant={getZoneStatusVariant(selectedZone.status)}>{getZoneStatusLabel(selectedZone.status)}</Badge>
-                </div>
-                {typeof selectedZone.progress === "number" && (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>Progress</span>
-                      <span>{selectedZone.progress}%</span>
-                    </div>
-                    <Progress value={selectedZone.progress} />
-                  </div>
-                )}
-                {selectedZone.description && <p className="text-xs text-muted-foreground">{selectedZone.description}</p>}
-                {selectedZone.issues.length > 0 ? (
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-foreground">Problems</p>
-                    {selectedZone.issues.map((issue) => (
-                      <p key={issue} className="text-xs text-muted-foreground">
-                        • {issue}
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">No active problems reported.</p>
-                )}
               </div>
             )}
           </div>
