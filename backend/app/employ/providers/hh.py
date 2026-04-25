@@ -8,9 +8,7 @@ from .base import ExternalCandidate
 HH_BASE = "https://api.hh.ru"
 _TAG_RE = re.compile(r"<[^>]+>")
 
-
-def _name(obj: dict | None) -> str | None:
-    return obj.get("name") if isinstance(obj, dict) else None
+_cached_token: str | None = None
 
 
 def _format_salary(s: dict | None) -> str | None:
@@ -31,29 +29,54 @@ def _skills_from_snippet(snippet: dict) -> list[str]:
     return [w.strip(".,;:()[]") for w in re.findall(r"[A-Za-zА-Яа-я0-9_+\-]{3,}", text)][:15]
 
 
+async def _get_app_token(client: httpx.AsyncClient) -> str | None:
+    """Fetch client_credentials token if client_id/secret are configured."""
+    global _cached_token
+    if _cached_token:
+        return _cached_token
+    if not settings.hh_client_id or not settings.hh_client_secret:
+        return None
+    resp = await client.post(
+        f"{HH_BASE}/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": settings.hh_client_id,
+            "client_secret": settings.hh_client_secret,
+        },
+        headers={"HH-User-Agent": settings.hh_user_agent},
+    )
+    if resp.status_code == 200:
+        _cached_token = resp.json().get("access_token")
+        return _cached_token
+    return None
+
+
 class HHProvider:
     """Adapter over public HH search. Maps vacancies to candidate-like records."""
 
     def __init__(self, area: int | None = None, user_agent: str | None = None):
-        self.area = area or settings.hh_default_area
+        self.area = area if area is not None else settings.hh_default_area
         self.user_agent = user_agent or settings.hh_user_agent
 
     async def search(self, keywords: list[str], limit: int = 10) -> list[ExternalCandidate]:
         query = " ".join(k for k in keywords if k)
+        params: dict = {"text": query, "per_page": limit}
+        if self.area:
+            params["area"] = self.area
+
         async with httpx.AsyncClient(timeout=15) as client:
-            try:
-                resp = await client.get(
-                    f"{HH_BASE}/vacancies",
-                    params={"text": query, "area": self.area, "per_page": limit},
-                    headers={"User-Agent": self.user_agent},
-                )
-                resp.raise_for_status()
-                data = resp.json()
-            except httpx.HTTPStatusError as exc:
-                raise httpx.HTTPStatusError(
-                    f"HH API error {exc.response.status_code}: {exc.response.text[:120]}",
-                    request=exc.request, response=exc.response,
-                ) from exc
+            token = await _get_app_token(client)
+            headers = {"HH-User-Agent": self.user_agent}
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
+
+            resp = await client.get(
+                f"{HH_BASE}/vacancies",
+                params=params,
+                headers=headers,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
         out: list[ExternalCandidate] = []
         for item in data.get("items", []):
