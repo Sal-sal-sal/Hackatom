@@ -182,3 +182,35 @@ Body: `{ status?, progress?, note? }`
 
 ### `GET /deadlines/alerts` → `DeadlineOut[]`
 Overdue / at‑risk deadlines (same shape as `DeadlineOut`).
+
+---
+
+## Dashboard (`/dashboard`)
+Aggregated read-only views for the main page. No new tables — reads from `Deadline`, `Supply`, `Employee`.
+
+### `GET /dashboard/kpi` → `DashboardKPI`
+Same shape as `/deadlines/dashboard` (alias).
+
+### `GET /dashboard/gantt` → `GanttItem[]`
+```json
+[{ "id": 1, "name": "Foundation reinforcement",
+   "start_day": 0, "duration": 18, "progress": 72,
+   "category": "foundation" }]
+```
+`category` ∈ `foundation | electrical | structural | safety` (mapped from `DeadlineType` + title heuristic).
+
+### `GET /dashboard/alerts` → `AlertItem[]`
+```json
+[{ "id": 4, "title": "DOKA formwork delivery delayed",
+   "description": "...", "severity": "critical",
+   "timestamp": "2026-04-25T08:00:00" }]
+```
+`severity=critical` если deadline просрочен; `warning` если `priority=high` и ≤7 дней до deadline.
+
+### `GET /dashboard/activities?limit=10` → `ActivityItem[]`
+```json
+[{ "id": "d-1", "action": "Created task",
+   "target": "Pour foundation", "user": "Project Manager",
+   "timestamp": "2026-04-25T10:00:00" }]
+```
+Объединяет последние записи `Deadline`/`Supply.updated_at`/`Employee` в обратном хронологическом порядке.

@@ -1,13 +1,30 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Users } from "lucide-react"
 import { TaskProgressBar, DeadlineIndicator } from "@/components/progress-indicators"
-import { brigades } from "@/lib/mock-data"
+import { fetchBrigades } from "@/lib/api/employ"
+import { mapBrigade } from "@/lib/api/mappers"
+import type { Brigade } from "@/lib/mock-data"
 
 export function BrigadesGrid() {
+  const [items, setItems] = useState<Brigade[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchBrigades()
+      .then((data) => setItems(data.map(mapBrigade)))
+      .catch((e) => setError(e.message))
+  }, [])
+
+  if (error) return <p className="text-sm text-red-600">Failed to load brigades: {error}</p>
+  if (!items) return <p className="text-sm text-muted-foreground">Loading brigades…</p>
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {brigades.map((brigade) => (
+    <div data-testid="brigades-grid" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((brigade) => (
         <Card key={brigade.id} className="border bg-card transition-colors hover:border-primary/50">
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
